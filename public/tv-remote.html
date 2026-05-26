@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TV Remote</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #1a1a1f;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  .remote {
+    background: #222228;
+    border-radius: 36px;
+    padding: 2rem 1.5rem 2.5rem;
+    width: 280px;
+    border: 1px solid #333340;
+    box-shadow: 0 0 0 1px #111116, 0 40px 80px rgba(0,0,0,0.6);
+  }
+
+  .brand {
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: #555560;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+  }
+
+  .section { margin-bottom: 1.25rem; }
+
+  .row {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .btn {
+    background: #2c2c35;
+    border: 1px solid #3a3a45;
+    border-radius: 12px;
+    color: #c8c8d8;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    transition: background 0.1s, transform 0.1s, border-color 0.1s;
+    user-select: none;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .btn:hover { background: #35353f; border-color: #4a4a58; }
+  .btn:active { background: #1e1e26; transform: scale(0.94); }
+
+  .btn svg { width: 16px; height: 16px; stroke: #8888aa; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  .btn-sm { width: 52px; height: 44px; font-size: 10px; }
+  .btn-md { width: 64px; height: 48px; }
+  .btn-lg { width: 76px; height: 52px; }
+  .btn-wide { width: 110px; height: 44px; flex-direction: row; gap: 6px; font-size: 11px; }
+
+  .btn-power {
+    background: #2a1a1a;
+    border-color: #5a2a2a;
+    color: #ff6060;
+    width: 52px; height: 52px;
+    border-radius: 50%;
+  }
+  .btn-power svg { stroke: #ff6060; }
+  .btn-power:hover { background: #3a1f1f; border-color: #7a3a3a; }
+  .btn-power:active { background: #1a1010; }
+
+  .btn-accent {
+    background: #1a1f2e;
+    border-color: #2a3a5a;
+    color: #6090dd;
+  }
+  .btn-accent svg { stroke: #6090dd; }
+  .btn-accent:hover { background: #1f2538; }
+
+  .dpad-wrap {
+    display: grid;
+    grid-template-columns: 52px 64px 52px;
+    grid-template-rows: 48px 48px 48px;
+    gap: 6px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .dpad-center {
+    background: #35353f;
+    border: 1px solid #4a4a58;
+    border-radius: 50%;
+    width: 64px; height: 64px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+    font-size: 10px;
+    font-weight: 600;
+    color: #c8c8d8;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .dpad-center:hover { background: #3f3f4a; }
+  .dpad-center:active { background: #28282f; transform: scale(0.92); }
+
+  .dpad-arrow {
+    background: #2c2c35;
+    border: 1px solid #3a3a45;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .dpad-arrow:hover { background: #35353f; }
+  .dpad-arrow:active { background: #1e1e26; transform: scale(0.9); }
+
+  .dpad-up    { border-radius: 12px 12px 4px 4px; }
+  .dpad-down  { border-radius: 4px 4px 12px 12px; }
+  .dpad-left  { border-radius: 12px 4px 4px 12px; }
+  .dpad-right { border-radius: 4px 12px 12px 4px; }
+
+  .dpad-arrow svg { width: 18px; height: 18px; stroke: #8888aa; fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+
+  .color-row { display: flex; justify-content: center; gap: 8px; }
+  .btn-color {
+    width: 40px; height: 12px; border-radius: 6px; cursor: pointer;
+    border: none; transition: opacity 0.1s, transform 0.1s;
+  }
+  .btn-color:hover { opacity: 0.8; }
+  .btn-color:active { transform: scale(0.9); }
+  .btn-red    { background: #cc3333; }
+  .btn-green  { background: #33aa55; }
+  .btn-yellow { background: #ccaa22; }
+  .btn-blue   { background: #3366cc; }
+
+  .numpad {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .btn-num {
+    height: 40px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #c8c8d8;
+    background: #28282f;
+    border: 1px solid #35353f;
+    cursor: pointer;
+    transition: background 0.1s, transform 0.1s;
+  }
+  .btn-num:hover { background: #31313a; }
+  .btn-num:active { background: #1c1c22; transform: scale(0.95); }
+
+  .divider {
+    height: 1px;
+    background: #2a2a35;
+    margin: 1rem 0;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 1.5rem;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #2c2c35;
+    border: 1px solid #3a3a45;
+    color: #c8c8d8;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.error { border-color: #5a2a2a; color: #ff6060; }
+</style>
+</head>
+<body>
+
+<div class="remote">
+  <div class="brand">LG WebOS</div>
+
+  <div class="section">
+    <div class="row">
+      <button class="btn btn-power" onclick="sendCmd('POWER')" title="Power">
+        <svg viewBox="0 0 24 24"><path d="M12 2v6M6.3 5.3a9 9 0 1 0 11.4 0"/></svg>
+      </button>
+      <button class="btn btn-md btn-accent" onclick="sendCmd('HOME')" title="Home">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9,22 9,12 15,12 15,22"/></svg>
+        Home
+      </button>
+      <button class="btn btn-md" onclick="sendCmd('BACK')" title="Back">
+        <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+        Back
+      </button>
+      <button class="btn btn-md" onclick="sendCmd('EXIT')" title="Exit">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Exit
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="dpad-wrap">
+      <div></div>
+      <div class="dpad-arrow dpad-up" onclick="sendCmd('UP')">
+        <svg viewBox="0 0 24 24"><polyline points="18,15 12,9 6,15"/></svg>
+      </div>
+      <div></div>
+      <div class="dpad-arrow dpad-left" onclick="sendCmd('LEFT')">
+        <svg viewBox="0 0 24 24"><polyline points="15,18 9,12 15,6"/></svg>
+      </div>
+      <div class="dpad-center" onclick="sendCmd('ENTER')">OK</div>
+      <div class="dpad-arrow dpad-right" onclick="sendCmd('RIGHT')">
+        <svg viewBox="0 0 24 24"><polyline points="9,18 15,12 9,6"/></svg>
+      </div>
+      <div></div>
+      <div class="dpad-arrow dpad-down" onclick="sendCmd('DOWN')">
+        <svg viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+      </div>
+      <div></div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="row">
+      <button class="btn btn-wide" onclick="sendCmd('VOLUMEUP')">
+        <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="15.54" y1="8.46" x2="19.07" y2="4.93"/><line x1="19.07" y1="8.46" x2="15.54" y2="4.93"/><path d="M19.07 15.54a5 5 0 0 0 0-7.07"/></svg>
+        Vol +
+      </button>
+      <button class="btn btn-wide" onclick="sendCmd('VOLUMEDOWN')">
+        <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="9"/></svg>
+        Vol −
+      </button>
+    </div>
+    <div class="row">
+      <button class="btn btn-wide" onclick="sendCmd('MUTE')">
+        <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        Mute
+      </button>
+      <button class="btn btn-wide" onclick="sendCmd('CC')">
+        <svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M8 12h2m-1-2v4M14 12h2m-1-2v4"/></svg>
+        CC
+      </button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="row">
+      <button class="btn btn-wide" onclick="sendCmd('CHANNELUP')">
+        <svg viewBox="0 0 24 24"><polyline points="18,15 12,9 6,15"/></svg>
+        Ch +
+      </button>
+      <button class="btn btn-wide" onclick="sendCmd('CHANNELDOWN')">
+        <svg viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
+        Ch −
+      </button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="numpad">
+      <button class="btn-num" onclick="sendCmd('1')">1</button>
+      <button class="btn-num" onclick="sendCmd('2')">2</button>
+      <button class="btn-num" onclick="sendCmd('3')">3</button>
+      <button class="btn-num" onclick="sendCmd('4')">4</button>
+      <button class="btn-num" onclick="sendCmd('5')">5</button>
+      <button class="btn-num" onclick="sendCmd('6')">6</button>
+      <button class="btn-num" onclick="sendCmd('7')">7</button>
+      <button class="btn-num" onclick="sendCmd('8')">8</button>
+      <button class="btn-num" onclick="sendCmd('9')">9</button>
+      <button class="btn-num" onclick="sendCmd('DASH')">—</button>
+      <button class="btn-num" onclick="sendCmd('0')">0</button>
+      <button class="btn-num" onclick="sendCmd('*')">✳</button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="color-row">
+      <button class="btn-color btn-red"    onclick="sendCmd('RED')"    title="Red"></button>
+      <button class="btn-color btn-green"  onclick="sendCmd('GREEN')"  title="Green"></button>
+      <button class="btn-color btn-yellow" onclick="sendCmd('YELLOW')" title="Yellow"></button>
+      <button class="btn-color btn-blue"   onclick="sendCmd('BLUE')"   title="Blue"></button>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="section">
+    <div class="row">
+      <button class="btn btn-wide btn-accent" onclick="sendInput('HDMI_1')">HDMI 1</button>
+      <button class="btn btn-wide btn-accent" onclick="sendInput('HDMI_2')">HDMI 2</button>
+    </div>
+    <div class="row">
+      <button class="btn btn-wide btn-accent" onclick="sendInput('HDMI_3')">HDMI 3</button>
+      <button class="btn btn-wide btn-accent" onclick="sendInput('HDMI_4')">HDMI 4</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var toastTimer;
+
+function showToast(msg, isError) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function() { t.className = 'toast'; }, 1800);
+}
+
+function sendCmd(button) {
+  fetch('/api/tv/button', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ button: button })
+  })
+  .then(function(r) {
+    if (r.ok) { showToast(button, false); }
+    else { showToast('Error: ' + r.status, true); }
+  })
+  .catch(function() { showToast('No connection', true); });
+}
+
+function sendInput(inputId) {
+  fetch('/api/tv/input', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inputId: inputId })
+  })
+  .then(function(r) {
+    if (r.ok) { showToast(inputId, false); }
+    else { showToast('Error: ' + r.status, true); }
+  })
+  .catch(function() { showToast('No connection', true); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,636 @@
+[
+    {
+        "id": "a3e21b69d66e5ed8",
+        "type": "tab",
+        "label": "Weather",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "a3416d428f34cb7d",
+        "type": "tab",
+        "label": "TV Control",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "93c16a1e9a810bc7",
+        "type": "lgtv-config",
+        "host": "192.168.100.109"
+    },
+    {
+        "id": "0979def97c11902e",
+        "type": "http in",
+        "z": "a3e21b69d66e5ed8",
+        "name": "",
+        "url": "/home",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 100,
+        "wires": [
+            [
+                "home-redirect"
+            ]
+        ]
+    },
+    {
+        "id": "home-redirect",
+        "type": "function",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Redirect to dashboard",
+        "func": "msg.statusCode = 302;\nmsg.headers = { location: '/index.html' };\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "x": 360,
+        "y": 100,
+        "wires": [
+            [
+                "8b1eee2457baa4c9"
+            ]
+        ]
+    },
+    {
+        "id": "8b1eee2457baa4c9",
+        "type": "http response",
+        "z": "a3e21b69d66e5ed8",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 550,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "weather-inject",
+        "type": "inject",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Poll every 5 min",
+        "props": [],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "3",
+        "topic": "",
+        "x": 170,
+        "y": 260,
+        "wires": [
+            [
+                "weather-request",
+                "forecast-request",
+                "aqi-request"
+            ]
+        ]
+    },
+    {
+        "id": "weather-request",
+        "type": "http request",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Open-Meteo Current",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=41.85&longitude=-87.65&current=temperature_2m,relative_humidity_2m,precipitation_probability,cloud_cover,wind_speed_10m,surface_pressure,uv_index&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 200,
+        "wires": [
+            [
+                "weather-parse"
+            ]
+        ]
+    },
+    {
+        "id": "weather-parse",
+        "type": "function",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Parse Current Weather",
+        "func": "const c = msg.payload.current;\nif (!c) { node.warn('No current data in weather response'); return null; }\nflow.set('weather', {\n    temperature: c.temperature_2m,\n    humidity: c.relative_humidity_2m,\n    precipitation_probability: c.precipitation_probability,\n    cloud_cover: c.cloud_cover,\n    wind_speed: c.wind_speed_10m,\n    pressure: c.surface_pressure,\n    uv_index: c.uv_index,\n    updated: new Date().toLocaleTimeString()\n});\nreturn msg;",
+        "outputs": 1,
+        "x": 650,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "forecast-request",
+        "type": "http request",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Open-Meteo Forecast",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://api.open-meteo.com/v1/forecast?latitude=41.85&longitude=-87.65&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,surface_pressure_mean&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FChicago",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 260,
+        "wires": [
+            [
+                "forecast-parse"
+            ]
+        ]
+    },
+    {
+        "id": "forecast-parse",
+        "type": "function",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Parse Forecast",
+        "func": "const d = msg.payload.daily;\nif (!d) { node.warn('No daily data in forecast response'); return null; }\nconst days = d.time.map((date, i) => ({\n    date,\n    temp_max: d.temperature_2m_max[i],\n    temp_min: d.temperature_2m_min[i],\n    precip_prob: d.precipitation_probability_max[i],\n    wind_max: d.wind_speed_10m_max[i],\n    pressure_mean: d.surface_pressure_mean[i]\n}));\nflow.set('forecast', { days, updated: new Date().toLocaleTimeString() });\nreturn msg;",
+        "outputs": 1,
+        "x": 650,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "aqi-request",
+        "type": "http request",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Open-Meteo AQI",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.85&longitude=-87.65&current=us_aqi,pm2_5",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 410,
+        "y": 320,
+        "wires": [
+            [
+                "aqi-parse"
+            ]
+        ]
+    },
+    {
+        "id": "aqi-parse",
+        "type": "function",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Parse AQI",
+        "func": "const c = msg.payload.current;\nif (!c) { node.warn('No current data in AQI response'); return null; }\nflow.set('aqi', {\n    us_aqi: c.us_aqi,\n    pm2_5: c.pm2_5,\n    updated: new Date().toLocaleTimeString()\n});\nreturn msg;",
+        "outputs": 1,
+        "x": 650,
+        "y": 320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "api-weather-in",
+        "type": "http in",
+        "z": "a3e21b69d66e5ed8",
+        "name": "",
+        "url": "/api/weather",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 460,
+        "wires": [
+            [
+                "api-weather-assemble"
+            ]
+        ]
+    },
+    {
+        "id": "api-weather-assemble",
+        "type": "function",
+        "z": "a3e21b69d66e5ed8",
+        "name": "Assemble Response",
+        "func": "msg.payload = {\n    weather: flow.get('weather') || null,\n    forecast: flow.get('forecast') || null,\n    aqi: flow.get('aqi') || null\n};\nreturn msg;",
+        "outputs": 1,
+        "x": 390,
+        "y": 460,
+        "wires": [
+            [
+                "api-weather-out"
+            ]
+        ]
+    },
+    {
+        "id": "api-weather-out",
+        "type": "http response",
+        "z": "a3e21b69d66e5ed8",
+        "name": "",
+        "statusCode": "200",
+        "headers": {
+            "content-type": "application/json"
+        },
+        "x": 600,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "695b62f958a752b0",
+        "type": "wake on lan",
+        "z": "a3416d428f34cb7d",
+        "mac": "78:5d:c8:91:3b:d4",
+        "host": "192.168.100.50",
+        "udpport": 9,
+        "numpackets": 3,
+        "interval": 100,
+        "name": "",
+        "x": 650,
+        "y": 80,
+        "wires": []
+    },
+    {
+        "id": "4f08db42f7c32bf9",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 280,
+        "y": 80,
+        "wires": [
+            [
+                "695b62f958a752b0"
+            ]
+        ]
+    },
+    {
+        "id": "5c70e11ce4dcfb74",
+        "type": "lgtv-toast",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 490,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "e42f207d7570173e",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "HELLO WORLD",
+        "payloadType": "str",
+        "x": 240,
+        "y": 280,
+        "wires": [
+            [
+                "5c70e11ce4dcfb74"
+            ]
+        ]
+    },
+    {
+        "id": "18bb8396a44b1f24",
+        "type": "lgtv-control",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 430,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "2e90dc518f152323",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "turnOn",
+        "payloadType": "str",
+        "x": 170,
+        "y": 120,
+        "wires": [
+            [
+                "18bb8396a44b1f24"
+            ]
+        ]
+    },
+    {
+        "id": "5139fff38b148920",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "turnOff",
+        "payloadType": "str",
+        "x": 170,
+        "y": 160,
+        "wires": [
+            [
+                "18bb8396a44b1f24"
+            ]
+        ]
+    },
+    {
+        "id": "b028a43c9d55d636",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "turnOff",
+        "payloadType": "str",
+        "x": 190,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "29719abf1a21a44c",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 600,
+        "y": 420,
+        "wires": [
+            [
+                "c5a95a9c8b6d4cf0"
+            ]
+        ]
+    },
+    {
+        "id": "70ad66e6753694ec",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 150,
+        "y": 420,
+        "wires": [
+            [
+                "0c63867d7bae0f5c"
+            ]
+        ]
+    },
+    {
+        "id": "0c63867d7bae0f5c",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "switch to HDMI_2",
+        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = {inputId:'HDMI_2'};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 420,
+        "wires": [
+            [
+                "29719abf1a21a44c"
+            ]
+        ]
+    },
+    {
+        "id": "c5a95a9c8b6d4cf0",
+        "type": "debug",
+        "z": "a3416d428f34cb7d",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 780,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "e8ab2de782aa0d0e",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 160,
+        "y": 540,
+        "wires": [
+            [
+                "ad252ce8056968d3"
+            ]
+        ]
+    },
+    {
+        "id": "ad252ce8056968d3",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "get input list",
+        "func": "msg.payload = {};\nmsg.topic = 'ssap://tv/getExternalInputList';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 540,
+        "wires": [
+            [
+                "29719abf1a21a44c"
+            ]
+        ]
+    },
+    {
+        "id": "fe57b9a20d9cb0c2",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 140,
+        "y": 460,
+        "wires": [
+            [
+                "bca55cb13f1983d2"
+            ]
+        ]
+    },
+    {
+        "id": "bca55cb13f1983d2",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "switch to HDMI_3",
+        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = {inputId:'HDMI_3'};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 460,
+        "wires": [
+            [
+                "29719abf1a21a44c"
+            ]
+        ]
+    },
+    {
+        "id": "f725903752c22a70",
+        "type": "lgtv-button",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 490,
+        "y": 340,
+        "wires": []
+    },
+    {
+        "id": "bf13cc344779ba72",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "menu",
+        "payloadType": "str",
+        "x": 140,
+        "y": 340,
+        "wires": [
+            [
+                "f725903752c22a70"
+            ]
+        ]
+    }
+]

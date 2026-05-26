@@ -1,0 +1,42 @@
+# After installing nodered:
+
+# remove inactive .node-red dir in user directory
+rm -rf ~/.node-red
+
+# create symlink
+# NOTE: SFTP needs to use the actual path, not the symlink
+ln -s /var/lib/node-red/.node-red ~/.node-red   
+
+# Add debian user to node-red group (requires re-login to take effect)
+sudo usermod -aG node-red debian
+
+# Give group write access to the directory and its contents
+sudo chmod -R g+w /var/lib/node-red/.node-red
+
+# then log out and back in
+
+
+# Installing custom nodes:
+cd /var/lib/node-red/.node-red
+npm install node-red-contrib-lgtv-updated
+npm install node-red-contrib-wake_on_lan
+sudo systemctl restart nodered
+
+~~~
+ 
+# set up DHCP for the P2P network with the TV
+sudo apt install dnsmasq
+
+sudo nano /etc/dnsmasq.conf
+# Disable DNS
+port=0 
+# Configure DHCP server for TV
+interface=eth0
+dhcp-range=192.168.100.50,192.168.100.50,24h
+
+# static IP
+# sudo nano /etc/network/interfaces
+auto eth0
+iface eth0 inet static
+    address 192.168.100.1
+    netmask 255.255.255.0

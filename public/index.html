@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-time">
+            <span id="clock">--:--</span><span id="clock-ampm" class="ampm">--</span>
+        </div>
+        <div id="header-date" class="header-date">Loading...</div>
+        <div id="last-updated" class="header-updated">Not yet updated</div>
+    </header>
+
+    <main class="dashboard">
+        <section class="panel panel--current">
+            <div class="panel-label">Now</div>
+            <div class="temperature-row">
+                <span id="temperature" class="temperature">--</span>
+                <span class="temp-unit">°F</span>
+            </div>
+            <div id="aqi-badge" class="aqi-badge">AQI --</div>
+            <ul class="stat-list">
+                <li class="stat-item">
+                    <span class="stat-key">Humidity</span>
+                    <span id="humidity" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">Wind</span>
+                    <span id="wind-speed" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">Pressure</span>
+                    <span id="pressure" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">Precip. Chance</span>
+                    <span id="precip-prob" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">Cloud Cover</span>
+                    <span id="cloud-cover" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">UV Index</span>
+                    <span id="uv-index" class="stat-val">--</span>
+                </li>
+                <li class="stat-item">
+                    <span class="stat-key">PM2.5</span>
+                    <span id="pm25" class="stat-val">--</span>
+                </li>
+            </ul>
+        </section>
+
+        <section class="panel panel--forecast">
+            <div class="panel-label">7-Day Forecast</div>
+            <div id="forecast-cards" class="forecast-grid"></div>
+        </section>
+    </main>
+
+    <script src="/app.js"></script>
+</body>
+</html>
