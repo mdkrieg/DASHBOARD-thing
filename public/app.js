@@ -206,6 +206,17 @@ function checkSensorStaleness() {
     });
 }
 
+async function loadSensors() {
+    try {
+        const res = await fetch('/api/sensors');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        Object.values(data).forEach(handleSensorMessage);
+    } catch (e) {
+        console.error('Sensor initial load failed:', e);
+    }
+}
+
 function connectSensorWS() {
     if (sensorWS && sensorWS.readyState < 2) return;
     sensorWS = new WebSocket(WS_URL);
@@ -232,5 +243,6 @@ updateClock();
 poll();
 setInterval(poll, POLL_MS);
 
+loadSensors();
 connectSensorWS();
 setInterval(checkSensorStaleness, 30 * 1000);

@@ -483,7 +483,7 @@
         "type": "function",
         "z": "a3416d428f34cb7d",
         "name": "press Remote Button",
-        "func": "msg.payload = msg.req.body.button;\n\nif (msg.payload == \"POWER\") {\n    // trigger new ping for TV state after delay\n    setTimeout(() => {\n        node.send([null, null, { payload: new Date() }]);\n    }, 1000);\n    if (flow.get(\"TVON\") === false) {\n        node.send([null, { payload: new Date() }]);\n        return;\n    }\n}\nreturn msg;",
+        "func": "msg.payload = msg.req.body.button;\n\nif (msg.payload == \"POWER\") {\n    // trigger new ping for TV state after delay\n    setTimeout(() => {\n        node.send([null, null, { payload: new Date() }]);\n    }, 1000);\n    if (!flow.get(\"TVON\")) {\n        node.send([null, { payload: new Date() }]);\n        return;\n    }\n}\nreturn msg;",
         "outputs": 3,
         "noerr": 0,
         "initialize": "",
@@ -586,7 +586,7 @@
                 "vt": "str"
             }
         ],
-        "repeat": "10",
+        "repeat": "1",
         "crontab": "",
         "once": true,
         "onceDelay": 0.1,
@@ -606,15 +606,19 @@
         "type": "function",
         "z": "a3416d428f34cb7d",
         "name": "TVON - status",
-        "func": "if (msg.payload.code == 0){\n    let TV_state = flow.get(\"TV_state\") || {}\n    TV_state.status = \"online\"\n    flow.set(\"TV_state\",TV_state)\n    node.status({\n        fill:\"green\",\n        shape:\"dot\",\n        text:\"TV ON\"\n    })\n} else {\n    flow.set(\"TV_state\", {\"state\":\"offline\"})\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"unknown\"\n    })\n}\nvar response = null;\nif(msg.request){\n    response = {payload: 0};\n}\nreturn [msg, response];",
-        "outputs": 0,
+        "func": "if (msg.payload.code == 0){\n    let TV_state = flow.get(\"TV_state\") || {}\n    TV_state.status = \"online\"\n    flow.set(\"TV_state\",TV_state)\n    if (flow.get(\"TVON\") === false){\n        node.send({\n            topic: 'ssap://tv/switchInput',\n            payload: { inputId: \"hdmi3\" }\n        });\n    }\n    flow.set(\"TVON\", true)\n    node.status({\n        fill:\"green\",\n        shape:\"dot\",\n        text:\"TV ON\"\n    })\n} else {\n    flow.set(\"TV_state\", {\"state\":\"offline\"})\n    flow.set(\"TVON\", false)\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"unknown\"\n    })\n}\n",
+        "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
         "x": 720,
         "y": 480,
-        "wires": []
+        "wires": [
+            [
+                "f01de3383bd4599a"
+            ]
+        ]
     },
     {
         "id": "f8508141783acabe",
@@ -683,12 +687,11 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 400,
-        "y": 220,
+        "x": 200,
+        "y": 1140,
         "wires": [
             [
-                "695b62f958a752b0",
-                "945a0134ea1e4d79"
+                "706094c4a802acfd"
             ]
         ]
     },
@@ -703,35 +706,10 @@
         "wires": []
     },
     {
-        "id": "945a0134ea1e4d79",
-        "type": "delay",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "pauseType": "delay",
-        "timeout": "10",
-        "timeoutUnits": "seconds",
-        "rate": "1",
-        "nbRateUnits": "1",
-        "rateUnits": "second",
-        "randomFirst": "1",
-        "randomLast": "5",
-        "randomUnits": "seconds",
-        "drop": false,
-        "allowrate": false,
-        "outputs": 1,
-        "x": 500,
-        "y": 280,
-        "wires": [
-            [
-                "83457a233547745e"
-            ]
-        ]
-    },
-    {
         "id": "83457a233547745e",
         "type": "change",
         "z": "a3416d428f34cb7d",
-        "name": "",
+        "name": "dashboard URL",
         "rules": [
             {
                 "t": "set",
@@ -751,35 +729,6 @@
         "wires": [
             [
                 "4d97d8d8dbf9e096"
-            ]
-        ]
-    },
-    {
-        "id": "e0a555018f09bb64",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "192.168.100.5:1880/index.html",
-        "payloadType": "str",
-        "x": 510,
-        "y": 340,
-        "wires": [
-            [
-                "83457a233547745e"
             ]
         ]
     },
@@ -816,7 +765,7 @@
                 "vt": "str"
             }
         ],
-        "repeat": "5",
+        "repeat": "1",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
@@ -981,6 +930,301 @@
         ]
     },
     {
+        "id": "ac70d054c1c91318",
+        "type": "http in",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "url": "/api/tv/state",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 190,
+        "y": 1060,
+        "wires": [
+            [
+                "3015b89c5140673f"
+            ]
+        ]
+    },
+    {
+        "id": "3015b89c5140673f",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "get TV_state",
+        "func": "msg.payload = flow.get(\"TV_state\") || {};\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 1060,
+        "wires": [
+            [
+                "5c7dec4eb925b855"
+            ]
+        ]
+    },
+    {
+        "id": "5c7dec4eb925b855",
+        "type": "http response",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 640,
+        "y": 1060,
+        "wires": []
+    },
+    {
+        "id": "f01de3383bd4599a",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 920,
+        "y": 440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "ccf32f698ed9edcc",
+        "type": "http in",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "url": "/goto/dashboard",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 200,
+        "y": 1220,
+        "wires": [
+            [
+                "663ac03007ba4bf6",
+                "b5760d50c2a72d75"
+            ]
+        ]
+    },
+    {
+        "id": "646584c3abda3e37",
+        "type": "http in",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "url": "/goto/input/:source",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 200,
+        "y": 1360,
+        "wires": [
+            [
+                "5336d95986d3afed",
+                "76d066c5f112b0a1"
+            ]
+        ]
+    },
+    {
+        "id": "14f65479b1013038",
+        "type": "http response",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 670,
+        "y": 1260,
+        "wires": []
+    },
+    {
+        "id": "d0ae085f5e086f20",
+        "type": "link in",
+        "z": "a3416d428f34cb7d",
+        "name": "dashboard-wake",
+        "links": [
+            "706094c4a802acfd"
+        ],
+        "x": 420,
+        "y": 220,
+        "wires": [
+            [
+                "695b62f958a752b0",
+                "09aef2123c55d156"
+            ]
+        ],
+        "l": true
+    },
+    {
+        "id": "706094c4a802acfd",
+        "type": "link out",
+        "z": "a3416d428f34cb7d",
+        "name": "dashboard-wake OUT",
+        "mode": "link",
+        "links": [
+            "d0ae085f5e086f20"
+        ],
+        "x": 635,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "663ac03007ba4bf6",
+        "type": "switch",
+        "z": "a3416d428f34cb7d",
+        "name": "Is TV ON?",
+        "property": "TVON",
+        "propertyType": "flow",
+        "rules": [
+            {
+                "t": "false"
+            },
+            {
+                "t": "true"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 450,
+        "y": 1180,
+        "wires": [
+            [
+                "706094c4a802acfd"
+            ],
+            [
+                "39c2bef5c4fbc79a"
+            ]
+        ]
+    },
+    {
+        "id": "16b7a9e2d1ac763f",
+        "type": "link in",
+        "z": "a3416d428f34cb7d",
+        "name": "dashboard-nav",
+        "links": [
+            "39c2bef5c4fbc79a"
+        ],
+        "x": 420,
+        "y": 340,
+        "wires": [
+            [
+                "83457a233547745e"
+            ]
+        ],
+        "l": true
+    },
+    {
+        "id": "39c2bef5c4fbc79a",
+        "type": "link out",
+        "z": "a3416d428f34cb7d",
+        "name": "dashboard-nav OUT",
+        "mode": "link",
+        "links": [
+            "16b7a9e2d1ac763f"
+        ],
+        "x": 635,
+        "y": 1220,
+        "wires": []
+    },
+    {
+        "id": "b5760d50c2a72d75",
+        "type": "template",
+        "z": "a3416d428f34cb7d",
+        "name": "Dashboard Page",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "<link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/dist/tabler-icons.min.css\">\n\n<div style=\"min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;\">\n  <div style=\"background:#fff;border:0.5px solid #e5e5e5;border-radius:12px;padding:2rem 2.5rem;width:100%;max-width:360px;text-align:center;\">\n\n    <div style=\"width:48px;height:48px;border-radius:50%;background:#e8f1fb;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;\">\n      <i class=\"ti ti-device-tv\" style=\"font-size:22px;color:#185fa5;\"></i>\n    </div>\n\n    <p style=\"font-size:15px;font-weight:500;margin:0 0 0.5rem;\">Navigating to dashboard</p>\n    <p style=\"font-size:13px;color:#666;margin:0 0 2rem;\">\n      {{#flow.TVON}}TV needs to wake, then will navigate.{{/flow.TVON}}\n      {{^flow.TVON}}TV will navigate now.{{/flow.TVON}}\n    </p>\n\n    <div style=\"display:flex;flex-direction:column;gap:10px;\">\n      <a href=\"/goto/dashboard\" style=\"display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;border:0.5px solid #ccc;font-size:14px;color:#111;text-decoration:none;\">\n        <i class=\"ti ti-refresh\" style=\"font-size:16px;\"></i> Try again\n      </a>\n      <a href=\"/goto/HDMI_3\" style=\"display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;border:0.5px solid #ccc;font-size:14px;color:#111;text-decoration:none;\">\n        <i class=\"ti ti-device-remote\" style=\"font-size:16px;\"></i> Show Roku\n      </a>\n      <button onclick=\"window.close()\" style=\"display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:8px;border:0.5px solid #ccc;font-size:14px;color:#666;background:transparent;cursor:pointer;width:100%;\">\n        <i class=\"ti ti-x\" style=\"font-size:16px;\"></i> Close\n      </button>\n    </div>\n\n  </div>\n</div>",
+        "output": "str",
+        "x": 470,
+        "y": 1260,
+        "wires": [
+            [
+                "14f65479b1013038"
+            ]
+        ]
+    },
+    {
+        "id": "09aef2123c55d156",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "wait for TVON",
+        "func": "const POLL_INTERVAL = 500;\nconst TIMEOUT = 60000; // 1 minute\n\nconst elapsed = { count: 0 };\n\nnode.status({ fill: \"yellow\", shape: \"dot\", text: \"waiting for TV...\" });\n\nconst check = () => {\n    if (flow.get(\"TVON\") === true) {\n        node.status({});\n        node.send({});\n        return;\n    }\n\n    elapsed.count += POLL_INTERVAL;\n    if (TIMEOUT > 0 && elapsed.count >= TIMEOUT) {\n        node.status({ fill: \"red\", shape: \"dot\", text: \"timeout\" });\n        node.warn(\"Timed out waiting for TVON\");\n        return;\n    }\n\n    setTimeout(check, POLL_INTERVAL);\n};\n\ncheck();",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 440,
+        "y": 280,
+        "wires": [
+            [
+                "83457a233547745e"
+            ]
+        ]
+    },
+    {
+        "id": "5336d95986d3afed",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "change input source",
+        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = { inputId: msg.req.params.source };\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 1300,
+        "wires": [
+            [
+                "6687ea8d93ba8742"
+            ]
+        ]
+    },
+    {
+        "id": "6687ea8d93ba8742",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 680,
+        "y": 1300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "577d477e44bd72f3",
+        "type": "http response",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 670,
+        "y": 1400,
+        "wires": []
+    },
+    {
+        "id": "76d066c5f112b0a1",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "forward to tv-remote",
+        "func": "msg.statusCode = 302;\nmsg.headers = { Location: '/tv-remote.html' };\nmsg.payload = '';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 1400,
+        "wires": [
+            [
+                "577d477e44bd72f3"
+            ]
+        ]
+    },
+    {
         "id": "635e5819747db901",
         "type": "mqtt in",
         "z": "c1c95c1cc6321b9c",
@@ -1002,22 +1246,6 @@
         ]
     },
     {
-        "id": "0754d6dc6ed8a5d9",
-        "type": "debug",
-        "z": "c1c95c1cc6321b9c",
-        "name": "debug 7",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "false",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 740,
-        "y": 220,
-        "wires": []
-    },
-    {
         "id": "b6f155557b33e19f",
         "type": "function",
         "z": "c1c95c1cc6321b9c",
@@ -1032,7 +1260,6 @@
         "y": 220,
         "wires": [
             [
-                "0754d6dc6ed8a5d9",
                 "ws-sensors-out"
             ]
         ]
@@ -1051,7 +1278,7 @@
         "rh": 0,
         "inputs": 0,
         "x": 220,
-        "y": 180,
+        "y": 140,
         "wires": [
             [
                 "b6f155557b33e19f"
@@ -1066,6 +1293,61 @@
         "server": "ws-sensors-listener",
         "client": "",
         "x": 730,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "2fc0b5e1fb8c49dd",
+        "type": "http in",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "url": "/api/sensors",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 240,
+        "y": 320,
+        "wires": [
+            [
+                "372e6ab02ff1df74"
+            ]
+        ]
+    },
+    {
+        "id": "372e6ab02ff1df74",
+        "type": "change",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "sensorStats",
+                "tot": "flow"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 460,
+        "y": 320,
+        "wires": [
+            [
+                "1594c41009d95c20"
+            ]
+        ]
+    },
+    {
+        "id": "1594c41009d95c20",
+        "type": "http response",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 650,
         "y": 320,
         "wires": []
     }
