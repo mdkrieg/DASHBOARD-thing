@@ -41,6 +41,37 @@ function updateClock() {
         `${DAY_NAMES[now.getDay()]}, ${MONTH_NAMES[now.getMonth()]} ${now.getDate()}, ${now.getFullYear()}`;
 }
 
+// ── Sparkline ─────────────────────────────────────────────────────────────────
+
+function buildSparkline(temps, precips) {
+    if (!temps || temps.length < 2) return '';
+    const W = 100, H = 36;
+    const TEMP_TOP = 2, TEMP_BOT = 28;
+    const PREC_BOT = 34, PREC_MAX_H = 8;
+    const n      = temps.length;
+    const xStep  = W / (n - 1);
+    const tMin   = Math.min(...temps);
+    const tMax   = Math.max(...temps);
+    const tRange = tMax - tMin || 1;
+
+    const tempPts = temps.map((t, i) => {
+        const x = (i * xStep).toFixed(1);
+        const y = (TEMP_TOP + (TEMP_BOT - TEMP_TOP) * (1 - (t - tMin) / tRange)).toFixed(1);
+        return `${x},${y}`;
+    }).join(' ');
+
+    let precipSvg = '';
+    if (precips && precips.length === n) {
+        const pts   = precips.map((p, i) =>
+            `${(i * xStep).toFixed(1)},${(PREC_BOT - (p / 100) * PREC_MAX_H).toFixed(1)}`
+        ).join(' ');
+        const lastX = ((n - 1) * xStep).toFixed(1);
+        precipSvg = `<polygon points="0,${PREC_BOT} ${pts} ${lastX},${PREC_BOT}" fill="rgba(79,195,247,0.3)"/>`;
+    }
+
+    return `<svg class="fc-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${precipSvg}<polyline points="${tempPts}" fill="none" stroke="#ffb74d" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
+
 // ── Render helpers ───────────────────────────────────────────────────────────
 
 function renderCurrent(weather, aqi) {
@@ -72,10 +103,30 @@ function renderForecast(forecast) {
         const dayName = i === 0 ? 'Today' : DAY_NAMES[d.getDay()];
         const isToday = day.date === today;
 
-        const precip   = day.precip_prob   != null ? `${day.precip_prob}%`                    : '--';
-        const wind     = day.wind_max      != null ? `${Math.round(day.wind_max)} mph`        : '--';
-        const pressure = day.pressure_mean != null ? `${Math.round(day.pressure_mean)} hPa`  : '--';
+        const precip = day.precip_prob != null ? `${day.precip_prob}%` : '--';
+        const wind   = day.wind_max   != null ? `${Math.round(day.wind_max)} mph` : '--';
 
+        let pressureHtml;
+        if (i === 0 || day.pressure_mean == null) {
+            pressureHtml = day.pressure_mean != null ? `${Math.round(day.pressure_mean)} hPa` : '--';
+        } else {
+            const prev  = forecast.days[i - 1].pressure_mean;
+            const delta = prev != null ? Math.round(day.pressure_mean) - Math.round(prev) : null;
+            if (delta == null) {
+                pressureHtml = '--';
+            } else if (delta === 0) {
+                pressureHtml = `<span class="fc-pressure-flat">0 hPa</span>`;
+            } else if (delta > 0) {
+                pressureHtml = `<span class="fc-pressure-up">+${delta} hPa</span>`;
+            } else {
+                pressureHtml = `<span class="fc-pressure-down">${delta} hPa</span>`;
+            }
+        }
+
+        const sparkline = buildSparkline(
+            day.hourly && day.hourly.temperature,
+            day.hourly && day.hourly.precip_prob
+        );
         return `<div class="fc-card${isToday ? ' fc-card--today' : ''}">
             <div class="fc-day">${dayName}</div>
             <div class="fc-temps">
@@ -85,8 +136,9 @@ function renderForecast(forecast) {
             <dl class="fc-stats">
                 <dt>Precip</dt><dd>${precip}</dd>
                 <dt>Wind</dt><dd>${wind}</dd>
-                <dt>Pressure</dt><dd>${pressure}</dd>
+                <dt>Pressure</dt><dd>${pressureHtml}</dd>
             </dl>
+            ${sparkline}
         </div>`;
     }).join('');
 }

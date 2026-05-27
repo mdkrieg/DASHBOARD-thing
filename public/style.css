@@ -370,3 +370,14 @@ html, body {
     color: var(--text-1);
     text-align: left;
 }
+
+.fc-pressure-up   { color: #ffb74d; }
+.fc-pressure-down { color: #4fc3f7; }
+.fc-pressure-flat { color: var(--text-2); }
+
+.fc-sparkline {
+    width: 100%;
+    height: 36px;
+    display: block;
+    overflow: visible;
+}

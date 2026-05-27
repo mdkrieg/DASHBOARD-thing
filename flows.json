@@ -176,7 +176,7 @@
         "method": "GET",
         "ret": "obj",
         "paytoqs": "query",
-        "url": "https://api.open-meteo.com/v1/forecast?daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,surface_pressure_mean&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FChicago",
+        "url": "https://api.open-meteo.com/v1/forecast?daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,surface_pressure_mean&hourly=temperature_2m,precipitation_probability&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FChicago",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -197,7 +197,7 @@
         "type": "function",
         "z": "a3e21b69d66e5ed8",
         "name": "Parse Forecast",
-        "func": "const d = msg.payload.daily;\nif (!d) { node.warn('No daily data in forecast response'); return null; }\nconst days = d.time.map((date, i) => ({\n    date,\n    temp_max: d.temperature_2m_max[i],\n    temp_min: d.temperature_2m_min[i],\n    precip_prob: d.precipitation_probability_max[i],\n    wind_max: d.wind_speed_10m_max[i],\n    pressure_mean: d.surface_pressure_mean[i]\n}));\nflow.set('forecast', { days, updated: new Date().toLocaleTimeString() });\nreturn msg;",
+        "func": "const d = msg.payload.daily;\nconst h = msg.payload.hourly;\nif (!d) { node.warn('No daily data in forecast response'); return null; }\nconst days = d.time.map((date, i) => {\n    let hourlyData = null;\n    if (h && h.time) {\n        const prefix = date + 'T';\n        const start = h.time.findIndex(t => t.startsWith(prefix));\n        if (start >= 0) {\n            hourlyData = {\n                temperature: h.temperature_2m.slice(start, start + 24),\n                precip_prob: h.precipitation_probability.slice(start, start + 24)\n            };\n        }\n    }\n    return {\n        date,\n        temp_max: d.temperature_2m_max[i],\n        temp_min: d.temperature_2m_min[i],\n        precip_prob: d.precipitation_probability_max[i],\n        wind_max: d.wind_speed_10m_max[i],\n        pressure_mean: d.surface_pressure_mean[i],\n        hourly: hourlyData\n    };\n});\nflow.set('forecast', { days, updated: new Date().toLocaleTimeString() });\nreturn msg;",
         "outputs": 1,
         "x": 780,
         "y": 280,
@@ -363,11 +363,11 @@
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
+        "complete": "true",
+        "targetType": "full",
         "statusVal": "",
         "statusType": "auto",
-        "x": 760,
+        "x": 840,
         "y": 700,
         "wires": []
     },
@@ -559,7 +559,9 @@
         "x": 410,
         "y": 460,
         "wires": [
-            [],
+            [
+                "d63989ef0c26bd5d"
+            ],
             [],
             [
                 "ab92b885bed15afe"
@@ -600,14 +602,14 @@
         "type": "function",
         "z": "a3416d428f34cb7d",
         "name": "TVON - status",
-        "func": "if (msg.payload.code == 0){\n    flow.set(\"TVON\",true)\n    node.status({\n        fill:\"green\",\n        shape:\"dot\",\n        text:\"TV ON\"\n    })\n} else {\n    flow.set(\"TVON\", false)\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"unknown\"\n    })\n}\nvar response = null;\nif(msg.request){\n    response = {payload: 0};\n}\nreturn [msg, response];",
+        "func": "if (msg.payload.code == 0){\n    let TV_state = flow.get(\"TV_state\") || {}\n    TV_state.status = \"online\"\n    flow.set(\"TV_state\",TV_state)\n    node.status({\n        fill:\"green\",\n        shape:\"dot\",\n        text:\"TV ON\"\n    })\n} else {\n    flow.set(\"TV_state\", {\"state\":\"offline\"})\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"unknown\"\n    })\n}\nvar response = null;\nif(msg.request){\n    response = {payload: 0};\n}\nreturn [msg, response];",
         "outputs": 0,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
         "x": 720,
-        "y": 460,
+        "y": 480,
         "wires": []
     },
     {
@@ -810,18 +812,20 @@
                 "vt": "str"
             }
         ],
-        "repeat": "",
+        "repeat": "5",
         "crontab": "",
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 180,
-        "y": 780,
+        "x": 190,
+        "y": 860,
         "wires": [
             [
-                "9663d2960bd31117"
+                "9663d2960bd31117",
+                "8060c8de5d44752a",
+                "2a358bc7db518989"
             ]
         ]
     },
@@ -835,26 +839,9 @@
         "y": 780,
         "wires": [
             [
-                "751963948829fef3"
+                "4857c011af806ab4"
             ]
         ]
-    },
-    {
-        "id": "751963948829fef3",
-        "type": "debug",
-        "z": "a3416d428f34cb7d",
-        "name": "debug 4",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 760,
-        "y": 780,
-        "wires": []
     },
     {
         "id": "8060c8de5d44752a",
@@ -876,35 +863,6 @@
         ]
     },
     {
-        "id": "3f9d4a7b663f2a2b",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 860,
-        "wires": [
-            [
-                "8060c8de5d44752a"
-            ]
-        ]
-    },
-    {
         "id": "eea5ce7d4ca044c8",
         "type": "lgtv-request",
         "z": "a3416d428f34cb7d",
@@ -914,26 +872,9 @@
         "y": 860,
         "wires": [
             [
-                "e2963ff774dde5bd"
+                "68ca3958e9958025"
             ]
         ]
-    },
-    {
-        "id": "e2963ff774dde5bd",
-        "type": "debug",
-        "z": "a3416d428f34cb7d",
-        "name": "debug 5",
-        "active": true,
-        "tosidebar": true,
-        "console": false,
-        "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
-        "statusVal": "",
-        "statusType": "auto",
-        "x": 760,
-        "y": 860,
-        "wires": []
     },
     {
         "id": "2a358bc7db518989",
@@ -947,39 +888,10 @@
         "finalize": "",
         "libs": [],
         "x": 380,
-        "y": 920,
+        "y": 940,
         "wires": [
             [
                 "a31a35c2b3b619b4"
-            ]
-        ]
-    },
-    {
-        "id": "e8dd999ce57ee5f7",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 180,
-        "y": 920,
-        "wires": [
-            [
-                "2a358bc7db518989"
             ]
         ]
     },
@@ -990,29 +902,79 @@
         "tv": "93c16a1e9a810bc7",
         "name": "",
         "x": 580,
-        "y": 920,
+        "y": 940,
         "wires": [
             [
-                "10d7634eeb40a30f"
+                "9ff3b690b49b210e"
             ]
         ]
     },
     {
-        "id": "10d7634eeb40a30f",
+        "id": "d63989ef0c26bd5d",
         "type": "debug",
         "z": "a3416d428f34cb7d",
-        "name": "debug 6",
-        "active": true,
+        "name": "debug 8",
+        "active": false,
         "tosidebar": true,
         "console": false,
         "tostatus": false,
-        "complete": "payload",
-        "targetType": "msg",
+        "complete": "false",
         "statusVal": "",
         "statusType": "auto",
-        "x": 760,
-        "y": 920,
+        "x": 680,
+        "y": 400,
         "wires": []
+    },
+    {
+        "id": "4857c011af806ab4",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "store input",
+        "func": "let TV_state = flow.get(\"TV_state\") || {};\n\nTV_state.input = msg.payload.appId.split(\".\").slice(-1)[0]\nflow.set(\"TV_state\",TV_state)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 780,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "68ca3958e9958025",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "store volume",
+        "func": "let TV_state = flow.get(\"TV_state\") || {};\n\nTV_state.scenario = msg.payload.scenario\nTV_state.volume = msg.payload.volume\nTV_state.muted = msg.payload.muted\nflow.set(\"TV_state\",TV_state)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 750,
+        "y": 860,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9ff3b690b49b210e",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "store volume",
+        "func": "let TV_state = flow.get(\"TV_state\") || {};\n\nTV_state.screen_state = msg.payload.state\nflow.set(\"TV_state\",TV_state)\n\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 770,
+        "y": 940,
+        "wires": [
+            []
+        ]
     },
     {
         "id": "635e5819747db901",
@@ -1099,8 +1061,8 @@
         "name": "Push sensor data",
         "server": "ws-sensors-listener",
         "client": "",
-        "x": 678.2000122070312,
-        "y": 324.1999816894531,
+        "x": 730,
+        "y": 320,
         "wires": []
     }
 ]
