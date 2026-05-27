@@ -16,9 +16,50 @@
         "env": []
     },
     {
+        "id": "c1c95c1cc6321b9c",
+        "type": "tab",
+        "label": "Govee Sensors",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
         "id": "93c16a1e9a810bc7",
         "type": "lgtv-config",
         "host": "192.168.100.109"
+    },
+    {
+        "id": "f089e726e77d1626",
+        "type": "mqtt-broker",
+        "name": "",
+        "broker": "localhost",
+        "port": "1883",
+        "clientid": "node-red",
+        "autoConnect": true,
+        "usetls": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "birthMsg": {},
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "closeMsg": {},
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "willMsg": {},
+        "userProps": "",
+        "sessionExpiry": ""
+    },
+    {
+        "id": "ws-sensors-listener",
+        "type": "websocket-listener",
+        "path": "/ws/sensors",
+        "wholemsg": "false"
     },
     {
         "id": "0979def97c11902e",
@@ -68,14 +109,20 @@
         "type": "inject",
         "z": "a3e21b69d66e5ed8",
         "name": "Poll every 5 min",
-        "props": [],
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
         "repeat": "300",
         "crontab": "",
         "once": true,
         "onceDelay": "3",
         "topic": "",
-        "x": 170,
-        "y": 260,
+        "payload": "{\"latitude\":41.837264, \"longitude\":-88.047199}",
+        "payloadType": "json",
+        "x": 130,
+        "y": 240,
         "wires": [
             [
                 "weather-request",
@@ -91,8 +138,8 @@
         "name": "Open-Meteo Current",
         "method": "GET",
         "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://api.open-meteo.com/v1/forecast?latitude=41.85&longitude=-87.65&current=temperature_2m,relative_humidity_2m,precipitation_probability,cloud_cover,wind_speed_10m,surface_pressure,uv_index&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch",
+        "paytoqs": "query",
+        "url": "https://api.open-meteo.com/v1/forecast?current=temperature_2m,relative_humidity_2m,precipitation_probability,cloud_cover,wind_speed_10m,surface_pressure,uv_index&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -100,8 +147,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 410,
-        "y": 200,
+        "x": 440,
+        "y": 220,
         "wires": [
             [
                 "weather-parse"
@@ -115,8 +162,8 @@
         "name": "Parse Current Weather",
         "func": "const c = msg.payload.current;\nif (!c) { node.warn('No current data in weather response'); return null; }\nflow.set('weather', {\n    temperature: c.temperature_2m,\n    humidity: c.relative_humidity_2m,\n    precipitation_probability: c.precipitation_probability,\n    cloud_cover: c.cloud_cover,\n    wind_speed: c.wind_speed_10m,\n    pressure: c.surface_pressure,\n    uv_index: c.uv_index,\n    updated: new Date().toLocaleTimeString()\n});\nreturn msg;",
         "outputs": 1,
-        "x": 650,
-        "y": 200,
+        "x": 780,
+        "y": 220,
         "wires": [
             []
         ]
@@ -128,8 +175,8 @@
         "name": "Open-Meteo Forecast",
         "method": "GET",
         "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://api.open-meteo.com/v1/forecast?latitude=41.85&longitude=-87.65&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,surface_pressure_mean&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FChicago",
+        "paytoqs": "query",
+        "url": "https://api.open-meteo.com/v1/forecast?daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,wind_speed_10m_max,surface_pressure_mean&wind_speed_unit=mph&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=America%2FChicago",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -137,8 +184,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 410,
-        "y": 260,
+        "x": 440,
+        "y": 280,
         "wires": [
             [
                 "forecast-parse"
@@ -152,8 +199,8 @@
         "name": "Parse Forecast",
         "func": "const d = msg.payload.daily;\nif (!d) { node.warn('No daily data in forecast response'); return null; }\nconst days = d.time.map((date, i) => ({\n    date,\n    temp_max: d.temperature_2m_max[i],\n    temp_min: d.temperature_2m_min[i],\n    precip_prob: d.precipitation_probability_max[i],\n    wind_max: d.wind_speed_10m_max[i],\n    pressure_mean: d.surface_pressure_mean[i]\n}));\nflow.set('forecast', { days, updated: new Date().toLocaleTimeString() });\nreturn msg;",
         "outputs": 1,
-        "x": 650,
-        "y": 260,
+        "x": 780,
+        "y": 280,
         "wires": [
             []
         ]
@@ -165,8 +212,8 @@
         "name": "Open-Meteo AQI",
         "method": "GET",
         "ret": "obj",
-        "paytoqs": "ignore",
-        "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=41.85&longitude=-87.65&current=us_aqi,pm2_5",
+        "paytoqs": "query",
+        "url": "https://air-quality-api.open-meteo.com/v1/air-quality?current=us_aqi,pm2_5",
         "tls": "",
         "persist": false,
         "proxy": "",
@@ -174,8 +221,8 @@
         "authType": "",
         "senderr": false,
         "headers": [],
-        "x": 410,
-        "y": 320,
+        "x": 430,
+        "y": 340,
         "wires": [
             [
                 "aqi-parse"
@@ -189,8 +236,8 @@
         "name": "Parse AQI",
         "func": "const c = msg.payload.current;\nif (!c) { node.warn('No current data in AQI response'); return null; }\nflow.set('aqi', {\n    us_aqi: c.us_aqi,\n    pm2_5: c.pm2_5,\n    updated: new Date().toLocaleTimeString()\n});\nreturn msg;",
         "outputs": 1,
-        "x": 650,
-        "y": 320,
+        "x": 780,
+        "y": 340,
         "wires": [
             []
         ]
@@ -245,43 +292,14 @@
         "type": "wake on lan",
         "z": "a3416d428f34cb7d",
         "mac": "78:5d:c8:91:3b:d4",
-        "host": "192.168.100.50",
+        "host": "192.168.100.255",
         "udpport": 9,
         "numpackets": 3,
         "interval": 100,
-        "name": "",
-        "x": 650,
-        "y": 80,
+        "name": "Wake TV (WoL)",
+        "x": 720,
+        "y": 220,
         "wires": []
-    },
-    {
-        "id": "4f08db42f7c32bf9",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 280,
-        "y": 80,
-        "wires": [
-            [
-                "695b62f958a752b0"
-            ]
-        ]
     },
     {
         "id": "5c70e11ce4dcfb74",
@@ -290,7 +308,7 @@
         "tv": "93c16a1e9a810bc7",
         "name": "",
         "x": 490,
-        "y": 280,
+        "y": 580,
         "wires": []
     },
     {
@@ -315,108 +333,11 @@
         "payload": "HELLO WORLD",
         "payloadType": "str",
         "x": 240,
-        "y": 280,
+        "y": 580,
         "wires": [
             [
                 "5c70e11ce4dcfb74"
             ]
-        ]
-    },
-    {
-        "id": "18bb8396a44b1f24",
-        "type": "lgtv-control",
-        "z": "a3416d428f34cb7d",
-        "tv": "93c16a1e9a810bc7",
-        "name": "",
-        "x": 430,
-        "y": 140,
-        "wires": [
-            []
-        ]
-    },
-    {
-        "id": "2e90dc518f152323",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "turnOn",
-        "payloadType": "str",
-        "x": 170,
-        "y": 120,
-        "wires": [
-            [
-                "18bb8396a44b1f24"
-            ]
-        ]
-    },
-    {
-        "id": "5139fff38b148920",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "turnOff",
-        "payloadType": "str",
-        "x": 170,
-        "y": 160,
-        "wires": [
-            [
-                "18bb8396a44b1f24"
-            ]
-        ]
-    },
-    {
-        "id": "b028a43c9d55d636",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "turnOff",
-        "payloadType": "str",
-        "x": 190,
-        "y": 200,
-        "wires": [
-            []
         ]
     },
     {
@@ -425,59 +346,11 @@
         "z": "a3416d428f34cb7d",
         "tv": "93c16a1e9a810bc7",
         "name": "",
-        "x": 600,
-        "y": 420,
+        "x": 580,
+        "y": 700,
         "wires": [
             [
                 "c5a95a9c8b6d4cf0"
-            ]
-        ]
-    },
-    {
-        "id": "70ad66e6753694ec",
-        "type": "inject",
-        "z": "a3416d428f34cb7d",
-        "name": "",
-        "props": [
-            {
-                "p": "payload"
-            },
-            {
-                "p": "topic",
-                "vt": "str"
-            }
-        ],
-        "repeat": "",
-        "crontab": "",
-        "once": false,
-        "onceDelay": 0.1,
-        "topic": "",
-        "payload": "",
-        "payloadType": "date",
-        "x": 150,
-        "y": 420,
-        "wires": [
-            [
-                "0c63867d7bae0f5c"
-            ]
-        ]
-    },
-    {
-        "id": "0c63867d7bae0f5c",
-        "type": "function",
-        "z": "a3416d428f34cb7d",
-        "name": "switch to HDMI_2",
-        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = {inputId:'HDMI_2'};\nreturn msg;",
-        "outputs": 1,
-        "noerr": 0,
-        "initialize": "",
-        "finalize": "",
-        "libs": [],
-        "x": 360,
-        "y": 420,
-        "wires": [
-            [
-                "29719abf1a21a44c"
             ]
         ]
     },
@@ -494,8 +367,8 @@
         "targetType": "msg",
         "statusVal": "",
         "statusType": "auto",
-        "x": 780,
-        "y": 380,
+        "x": 760,
+        "y": 700,
         "wires": []
     },
     {
@@ -519,8 +392,8 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 160,
-        "y": 540,
+        "x": 180,
+        "y": 700,
         "wires": [
             [
                 "ad252ce8056968d3"
@@ -538,8 +411,8 @@
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 350,
-        "y": 540,
+        "x": 370,
+        "y": 700,
         "wires": [
             [
                 "29719abf1a21a44c"
@@ -547,7 +420,384 @@
         ]
     },
     {
-        "id": "fe57b9a20d9cb0c2",
+        "id": "aaf2a8a66e1ef109",
+        "type": "http in",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "url": "/api/tv/button",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 160,
+        "wires": [
+            [
+                "f0f1e2c74a3ce04b"
+            ]
+        ]
+    },
+    {
+        "id": "5a155593d122c3e5",
+        "type": "http in",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "url": "/api/tv/input",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 160,
+        "y": 80,
+        "wires": [
+            [
+                "e3406222757e15c0"
+            ]
+        ]
+    },
+    {
+        "id": "66c1ad64e22bd792",
+        "type": "http response",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 610,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "0be4ce2aeb0be570",
+        "type": "lgtv-button",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 770,
+        "y": 120,
+        "wires": []
+    },
+    {
+        "id": "f0f1e2c74a3ce04b",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "press Remote Button",
+        "func": "msg.payload = msg.req.body.button;\n\nif (msg.payload == \"POWER\") {\n    // trigger new ping for TV state after delay\n    setTimeout(() => {\n        node.send([null, null, { payload: new Date() }]);\n    }, 1000);\n    if (flow.get(\"TVON\") === false) {\n        node.send([null, { payload: new Date() }]);\n        return;\n    }\n}\nreturn msg;",
+        "outputs": 3,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 160,
+        "wires": [
+            [
+                "0be4ce2aeb0be570",
+                "b15d2de434a94164"
+            ],
+            [
+                "695b62f958a752b0",
+                "b15d2de434a94164"
+            ],
+            [
+                "57fd603f863ce326"
+            ]
+        ]
+    },
+    {
+        "id": "cb492f3eb3065487",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 620,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "e3406222757e15c0",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "change Input Source",
+        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = { inputId: msg.req.body.inputId };\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 80,
+        "wires": [
+            [
+                "cb492f3eb3065487",
+                "66c1ad64e22bd792"
+            ]
+        ]
+    },
+    {
+        "id": "b15d2de434a94164",
+        "type": "http response",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 750,
+        "y": 180,
+        "wires": []
+    },
+    {
+        "id": "2a1badf5ee1b2d32",
+        "type": "exec",
+        "z": "a3416d428f34cb7d",
+        "command": "ping -c 1 -W 1 192.168.100.109",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "5",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 410,
+        "y": 460,
+        "wires": [
+            [],
+            [],
+            [
+                "ab92b885bed15afe"
+            ]
+        ]
+    },
+    {
+        "id": "693620f60b5c5106",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "10",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 130,
+        "y": 460,
+        "wires": [
+            [
+                "2a1badf5ee1b2d32"
+            ]
+        ]
+    },
+    {
+        "id": "ab92b885bed15afe",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "TVON - status",
+        "func": "if (msg.payload.code == 0){\n    flow.set(\"TVON\",true)\n    node.status({\n        fill:\"green\",\n        shape:\"dot\",\n        text:\"TV ON\"\n    })\n} else {\n    flow.set(\"TVON\", false)\n    node.status({\n        fill: \"grey\",\n        shape: \"ring\",\n        text: \"unknown\"\n    })\n}\nvar response = null;\nif(msg.request){\n    response = {payload: 0};\n}\nreturn [msg, response];",
+        "outputs": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 720,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "f8508141783acabe",
+        "type": "link in",
+        "z": "a3416d428f34cb7d",
+        "name": "link in 1",
+        "links": [
+            "57fd603f863ce326"
+        ],
+        "x": 145,
+        "y": 400,
+        "wires": [
+            [
+                "2a1badf5ee1b2d32",
+                "0181c92344c4c178"
+            ]
+        ]
+    },
+    {
+        "id": "57fd603f863ce326",
+        "type": "link out",
+        "z": "a3416d428f34cb7d",
+        "name": "re-ping TV",
+        "mode": "link",
+        "links": [
+            "f8508141783acabe"
+        ],
+        "x": 105,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "0181c92344c4c178",
+        "type": "debug",
+        "z": "a3416d428f34cb7d",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 320,
+        "y": 400,
+        "wires": []
+    },
+    {
+        "id": "0379ac89dca5e9ec",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "wake up time",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "00 07 * * *",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 400,
+        "y": 220,
+        "wires": [
+            [
+                "695b62f958a752b0",
+                "945a0134ea1e4d79"
+            ]
+        ]
+    },
+    {
+        "id": "4d97d8d8dbf9e096",
+        "type": "lgtv-browser",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 860,
+        "y": 280,
+        "wires": []
+    },
+    {
+        "id": "945a0134ea1e4d79",
+        "type": "delay",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "pauseType": "delay",
+        "timeout": "10",
+        "timeoutUnits": "seconds",
+        "rate": "1",
+        "nbRateUnits": "1",
+        "rateUnits": "second",
+        "randomFirst": "1",
+        "randomLast": "5",
+        "randomUnits": "seconds",
+        "drop": false,
+        "allowrate": false,
+        "outputs": 1,
+        "x": 500,
+        "y": 280,
+        "wires": [
+            [
+                "83457a233547745e"
+            ]
+        ]
+    },
+    {
+        "id": "83457a233547745e",
+        "type": "change",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "rules": [
+            {
+                "t": "set",
+                "p": "payload",
+                "pt": "msg",
+                "to": "192.168.100.5:1880/index.html",
+                "tot": "str"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",
+        "to": "",
+        "reg": false,
+        "x": 680,
+        "y": 280,
+        "wires": [
+            [
+                "4d97d8d8dbf9e096"
+            ]
+        ]
+    },
+    {
+        "id": "e0a555018f09bb64",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "192.168.100.5:1880/index.html",
+        "payloadType": "str",
+        "x": 510,
+        "y": 340,
+        "wires": [
+            [
+                "83457a233547745e"
+            ]
+        ]
+    },
+    {
+        "id": "9663d2960bd31117",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "get current screen",
+        "func": "msg.payload = {};\nmsg.topic = 'ssap://com.webos.applicationManager/getForegroundAppInfo';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 390,
+        "y": 780,
+        "wires": [
+            [
+                "0245d88f8eae83c3"
+            ]
+        ]
+    },
+    {
+        "id": "6f83ec55ee3d4550",
         "type": "inject",
         "z": "a3416d428f34cb7d",
         "name": "",
@@ -567,45 +817,66 @@
         "topic": "",
         "payload": "",
         "payloadType": "date",
-        "x": 140,
-        "y": 460,
+        "x": 180,
+        "y": 780,
         "wires": [
             [
-                "bca55cb13f1983d2"
+                "9663d2960bd31117"
             ]
         ]
     },
     {
-        "id": "bca55cb13f1983d2",
+        "id": "0245d88f8eae83c3",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 580,
+        "y": 780,
+        "wires": [
+            [
+                "751963948829fef3"
+            ]
+        ]
+    },
+    {
+        "id": "751963948829fef3",
+        "type": "debug",
+        "z": "a3416d428f34cb7d",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "8060c8de5d44752a",
         "type": "function",
         "z": "a3416d428f34cb7d",
-        "name": "switch to HDMI_3",
-        "func": "msg.topic = 'ssap://tv/switchInput';\nmsg.payload = {inputId:'HDMI_3'};\nreturn msg;",
+        "name": "get current volume",
+        "func": "msg.payload = {};\nmsg.topic = 'ssap://audio/getVolume';\nreturn msg;",
         "outputs": 1,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 350,
-        "y": 460,
+        "x": 390,
+        "y": 860,
         "wires": [
             [
-                "29719abf1a21a44c"
+                "eea5ce7d4ca044c8"
             ]
         ]
     },
     {
-        "id": "f725903752c22a70",
-        "type": "lgtv-button",
-        "z": "a3416d428f34cb7d",
-        "tv": "93c16a1e9a810bc7",
-        "name": "",
-        "x": 490,
-        "y": 340,
-        "wires": []
-    },
-    {
-        "id": "bf13cc344779ba72",
+        "id": "3f9d4a7b663f2a2b",
         "type": "inject",
         "z": "a3416d428f34cb7d",
         "name": "",
@@ -623,14 +894,213 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "menu",
-        "payloadType": "str",
-        "x": 140,
-        "y": 340,
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 860,
         "wires": [
             [
-                "f725903752c22a70"
+                "8060c8de5d44752a"
             ]
         ]
+    },
+    {
+        "id": "eea5ce7d4ca044c8",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 580,
+        "y": 860,
+        "wires": [
+            [
+                "e2963ff774dde5bd"
+            ]
+        ]
+    },
+    {
+        "id": "e2963ff774dde5bd",
+        "type": "debug",
+        "z": "a3416d428f34cb7d",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "2a358bc7db518989",
+        "type": "function",
+        "z": "a3416d428f34cb7d",
+        "name": "get Power State",
+        "func": "msg.payload = {};\nmsg.topic = 'ssap://com.webos.service.tvpower/power/getPowerState';\nreturn msg;",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 920,
+        "wires": [
+            [
+                "a31a35c2b3b619b4"
+            ]
+        ]
+    },
+    {
+        "id": "e8dd999ce57ee5f7",
+        "type": "inject",
+        "z": "a3416d428f34cb7d",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 180,
+        "y": 920,
+        "wires": [
+            [
+                "2a358bc7db518989"
+            ]
+        ]
+    },
+    {
+        "id": "a31a35c2b3b619b4",
+        "type": "lgtv-request",
+        "z": "a3416d428f34cb7d",
+        "tv": "93c16a1e9a810bc7",
+        "name": "",
+        "x": 580,
+        "y": 920,
+        "wires": [
+            [
+                "10d7634eeb40a30f"
+            ]
+        ]
+    },
+    {
+        "id": "10d7634eeb40a30f",
+        "type": "debug",
+        "z": "a3416d428f34cb7d",
+        "name": "debug 6",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 920,
+        "wires": []
+    },
+    {
+        "id": "635e5819747db901",
+        "type": "mqtt in",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "topic": "govee/bedroom",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "f089e726e77d1626",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 80,
+        "wires": [
+            [
+                "b6f155557b33e19f"
+            ]
+        ]
+    },
+    {
+        "id": "0754d6dc6ed8a5d9",
+        "type": "debug",
+        "z": "c1c95c1cc6321b9c",
+        "name": "debug 7",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 740,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "b6f155557b33e19f",
+        "type": "function",
+        "z": "c1c95c1cc6321b9c",
+        "name": "aggregate",
+        "func": "// Configuration\nconst WINDOW_MS = 60 * 1000; // 1 minute aggregation window\n\n// Fields to aggregate from the payload\nconst FIELDS = ['temperature', 'temperature_c', 'humidity', 'battery'];\n\n// --- Helpers ---\n\nfunction median(sorted) {\n    const mid = Math.floor(sorted.length / 2);\n    return sorted[mid]; // don't bother averaging tied middle, little variance expected so don't add figures\n}\n\nfunction computeStats(values) {\n    if (values.length === 0) return null;\n    const sorted = [...values].sort((a, b) => a - b);\n    return {\n        min: sorted[0],\n        max: sorted[sorted.length - 1],\n        median: median(sorted),\n        count: sorted.length,\n    };\n}\n\nfunction flushTopic(topic) {\n    let buffers = context.get('buffers') || {};\n    let windows = context.get('windows') || {};\n    let timeouts = context.get('timeouts') || {};\n\n    delete buffers[topic];\n    delete windows[topic];\n    delete timeouts[topic];\n\n    context.set('buffers', buffers);\n    context.set('windows', windows);\n    context.set('timeouts', timeouts);\n\n    // Optionally clear from flow context too so stale stats aren't read downstream\n    let flowStats = flow.get('sensorStats') || {};\n    delete flowStats[topic];\n    flow.set('sensorStats', flowStats);\n}\n\n// --- Main ---\n\nconst topic = msg.topic;\nif (!topic || typeof msg.payload !== 'object') return null;\n\nconst now = Date.now();\nconst nowISO = new Date(now).toISOString();\n\n// Per-topic buffers live in node context  { [topic]: { lastSeen, friendlyName, fields: { [field]: number[] } } }\nlet buffers = context.get('buffers') || {};\n\nif (!buffers[topic]) {\n    buffers[topic] = { lastSeen: nowISO, friendlyName: null, fields: {} };\n    FIELDS.forEach(f => { buffers[topic].fields[f] = []; });\n}\n\nconst buf = buffers[topic];\nbuf.lastSeen = nowISO;\n\n// Carry through the latest friendly_name seen for this topic\nif (msg.payload.friendly_name != null) {\n    buf.friendlyName = msg.payload.friendly_name;\n}\n\n// Accumulate numeric field values\nFIELDS.forEach(field => {\n    const val = msg.payload[field];\n    if (typeof val === 'number' && isFinite(val)) {\n        if (!buf.fields[field]) buf.fields[field] = [];\n        buf.fields[field].push(val);\n    }\n});\n\ncontext.set('buffers', buffers);\n\n// --- Flush if window has elapsed ---\n\nlet windows = context.get('windows') || {};\n\nif (!windows[topic]) {\n    windows[topic] = now;\n    context.set('windows', windows);\n    return null;\n}\n\nconst elapsed = now - windows[topic];\nif (elapsed < WINDOW_MS) return null;\n\n// --- Window elapsed: compute and publish stats ---\n\nconst stats = {\n    topic,\n    friendly_name: buf.friendlyName, // <-- carried through\n    timestamp: nowISO,\n    fields: {}\n};\nlet hasData = false;\n\nFIELDS.forEach(field => {\n    const samples = buf.fields[field] || [];\n    if (samples.length > 0) {\n        stats.fields[field] = computeStats(samples);\n        hasData = true;\n    }\n});\n\n// Reset buffer and window for this topic\nbuffers[topic].fields = {};\nFIELDS.forEach(f => { buffers[topic].fields[f] = []; });\nwindows[topic] = now;\n\ncontext.set('buffers', buffers);\ncontext.set('windows', windows);\n\nif (!hasData) return null;\n\n// --- Write to flow context ---\n\nlet flowStats = flow.get('sensorStats') || {};\nflowStats[topic] = stats;\nflow.set('sensorStats', flowStats);\n\n// Refresh the silence-detection timeout for this topic\nvar timeouts = context.get('timeouts') || {};\nif (timeouts[topic]) clearTimeout(timeouts[topic]);\ntimeouts[topic] = setTimeout(() => { flushTopic(topic); }, WINDOW_MS * 5);\ncontext.set('timeouts', timeouts);\n\nreturn { topic, payload: stats };",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 220,
+        "wires": [
+            [
+                "0754d6dc6ed8a5d9",
+                "ws-sensors-out"
+            ]
+        ]
+    },
+    {
+        "id": "db7eafe616540348",
+        "type": "mqtt in",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "topic": "govee/matt_office",
+        "qos": "2",
+        "datatype": "auto-detect",
+        "broker": "f089e726e77d1626",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 220,
+        "y": 180,
+        "wires": [
+            [
+                "b6f155557b33e19f"
+            ]
+        ]
+    },
+    {
+        "id": "ws-sensors-out",
+        "type": "websocket out",
+        "z": "c1c95c1cc6321b9c",
+        "name": "Push sensor data",
+        "server": "ws-sensors-listener",
+        "client": "",
+        "x": 678.2000122070312,
+        "y": 324.1999816894531,
+        "wires": []
     }
 ]

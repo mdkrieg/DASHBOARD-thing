@@ -1,7 +1,10 @@
 'use strict';
 
 const API_URL   = '/api/weather';
+const WS_URL    = `ws://${location.host}/ws/sensors`;
 const POLL_MS   = 5 * 60 * 1000;
+
+let timeOffset = 0; // ms difference: server clock vs TV clock
 
 const DAY_NAMES   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -27,7 +30,7 @@ function $(id) {
 // ── Clock ────────────────────────────────────────────────────────────────────
 
 function updateClock() {
-    const now  = new Date();
+    const now  = new Date(Date.now() + timeOffset);
     let   h    = now.getHours();
     const m    = String(now.getMinutes()).padStart(2, '0');
     const ampm = h >= 12 ? 'PM' : 'AM';
@@ -62,7 +65,7 @@ function renderCurrent(weather, aqi) {
 
 function renderForecast(forecast) {
     if (!forecast || !forecast.days) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date(Date.now() + timeOffset).toISOString().slice(0, 10);
 
     $('forecast-cards').innerHTML = forecast.days.map((day, i) => {
         const d       = new Date(day.date + 'T12:00:00');
@@ -95,6 +98,9 @@ async function poll() {
         const res = await fetch(API_URL);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        if (data.serverTime) {
+            timeOffset = new Date(data.serverTime).getTime() - Date.now();
+        }
         renderCurrent(data.weather, data.aqi);
         renderForecast(data.forecast);
         $('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
@@ -103,10 +109,76 @@ async function poll() {
     }
 }
 
-// ── Init ─────────────────────────────────────────────────────────────────────
+// ── Sensor WebSocket ─────────────────────────────────────────────────────
+
+const SENSOR_STALE_MS = 5 * 60 * 1000;
+const sensorLastSeen  = {}; // cardId → timestamp
+
+let sensorWS = null;
+
+function handleSensorMessage(data) {
+    if (!data.topic || !data.fields) return;
+    const cardId = 'sc-' + data.topic.replace(/[^a-zA-Z0-9]/g, '-');
+    let card = document.getElementById(cardId);
+    if (!card) {
+        card = document.createElement('div');
+        card.className = 'sensor-card';
+        card.id = cardId;
+        $('sensor-cards').appendChild(card);
+    }
+    sensorLastSeen[cardId] = Date.now();
+    card.classList.remove('sensor-card--stale');
+    const f  = data.fields;
+    const t  = f.temperature;
+    const h  = f.humidity;
+    const b  = f.battery;
+    const tr = (t.max - t.min).toFixed(1);
+    const hr = (h.max - h.min).toFixed(1);
+    card.innerHTML =
+        `<div class="sensor-name">${data.friendly_name}</div>` +
+        `<dl class="sensor-stats">` +
+        `<dt>Temp</dt><dd>${t.median.toFixed(1)}° <small>±${tr}</small></dd>` +
+        `<dt>Humid</dt><dd>${h.median.toFixed(1)}% <small>±${hr}</small></dd>` +
+        `<dt>Battery</dt><dd>${b.median}%</dd>` +
+        `</dl>`;
+}
+
+function checkSensorStaleness() {
+    const now = Date.now();
+    Object.keys(sensorLastSeen).forEach(function (cardId) {
+        var card = document.getElementById(cardId);
+        if (!card) return;
+        if (now - sensorLastSeen[cardId] >= SENSOR_STALE_MS) {
+            card.classList.add('sensor-card--stale');
+        }
+    });
+}
+
+function connectSensorWS() {
+    if (sensorWS && sensorWS.readyState < 2) return;
+    sensorWS = new WebSocket(WS_URL);
+    sensorWS.addEventListener('message', function (evt) {
+        try {
+            handleSensorMessage(JSON.parse(evt.data));
+        } catch (e) {
+            console.error('Sensor WS parse error:', e);
+        }
+    });
+    sensorWS.addEventListener('close', function () {
+        setTimeout(connectSensorWS, 5000);
+    });
+    sensorWS.addEventListener('error', function () {
+        // close event will fire and trigger reconnect
+    });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
 
 setInterval(updateClock, 1000);
 updateClock();
 
 poll();
 setInterval(poll, POLL_MS);
+
+connectSensorWS();
+setInterval(checkSensorStaleness, 30 * 1000);
