@@ -191,9 +191,103 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
   .toast.error { border-color: #5a2a2a; color: #ff6060; }
+
+  .layout {
+    display: flex;
+    flex-direction: row;
+    gap: 2rem;
+    align-items: flex-start;
+    justify-content: center;
+    width: 100%;
+  }
+
+  @media (max-width: 620px) {
+    .layout { flex-direction: column; align-items: center; }
+  }
+
+  .status-panel {
+    background: #222228;
+    border-radius: 24px;
+    padding: 1.5rem;
+    width: 200px;
+    border: 1px solid #333340;
+    box-shadow: 0 0 0 1px #111116, 0 20px 40px rgba(0,0,0,0.4);
+    flex-shrink: 0;
+  }
+
+  .status-title {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: #555560;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 1.25rem;
+    text-align: center;
+  }
+
+  .status-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid #2a2a35;
+    gap: 8px;
+  }
+  .status-row:last-child { border-bottom: none; }
+
+  .status-label {
+    font-size: 10px;
+    color: #555560;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .status-value {
+    font-size: 13px;
+    color: #c8c8d8;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    text-align: right;
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555560;
+    flex-shrink: 0;
+  }
+  .status-dot.online  { background: #33aa55; box-shadow: 0 0 6px rgba(51,170,85,0.5); }
+  .status-dot.offline { background: #cc3333; box-shadow: 0 0 6px rgba(204,51,51,0.5); }
+
+  .vol-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+  }
+  .vol-bar-track {
+    width: 80px; height: 4px;
+    background: #2c2c35;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .vol-bar-fill {
+    height: 100%;
+    background: #6090dd;
+    border-radius: 2px;
+    transition: width 0.4s;
+    width: 0%;
+  }
+  .vol-bar-fill.muted { background: #cc9933; }
 </style>
 </head>
 <body>
+
+<div class="layout">
 
 <div class="remote">
   <div class="brand">LG WebOS</div>
@@ -246,13 +340,13 @@
 
   <div class="section">
     <div class="row">
-      <button class="btn btn-wide" onclick="sendCmd('VOLUMEUP')">
-        <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="15.54" y1="8.46" x2="19.07" y2="4.93"/><line x1="19.07" y1="8.46" x2="15.54" y2="4.93"/><path d="M19.07 15.54a5 5 0 0 0 0-7.07"/></svg>
-        Vol +
-      </button>
       <button class="btn btn-wide" onclick="sendCmd('VOLUMEDOWN')">
         <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="23" y1="9" x2="17" y2="9"/></svg>
         Vol −
+      </button>
+      <button class="btn btn-wide" onclick="sendCmd('VOLUMEUP')">
+        <svg viewBox="0 0 24 24"><polygon points="11,5 6,9 2,9 2,15 6,15 11,19"/><line x1="15.54" y1="8.46" x2="19.07" y2="4.93"/><line x1="19.07" y1="8.46" x2="15.54" y2="4.93"/><path d="M19.07 15.54a5 5 0 0 0 0-7.07"/></svg>
+        Vol +
       </button>
     </div>
     <div class="row">
@@ -269,13 +363,13 @@
 
   <div class="section">
     <div class="row">
-      <button class="btn btn-wide" onclick="sendCmd('CHANNELUP')">
-        <svg viewBox="0 0 24 24"><polyline points="18,15 12,9 6,15"/></svg>
-        Ch +
-      </button>
       <button class="btn btn-wide" onclick="sendCmd('CHANNELDOWN')">
         <svg viewBox="0 0 24 24"><polyline points="6,9 12,15 18,9"/></svg>
         Ch −
+      </button>
+      <button class="btn btn-wide" onclick="sendCmd('CHANNELUP')">
+        <svg viewBox="0 0 24 24"><polyline points="18,15 12,9 6,15"/></svg>
+        Ch +
       </button>
     </div>
   </div>
@@ -325,6 +419,37 @@
 
 </div>
 
+<div class="status-panel">
+  <div class="status-title">TV Status</div>
+  <div class="status-row">
+    <span class="status-label">Status</span>
+    <span class="status-value"><span class="status-dot" id="s-dot"></span><span id="s-status">—</span></span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Screen</span>
+    <span class="status-value" id="s-screen">—</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Input</span>
+    <span class="status-value" id="s-input">—</span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Volume</span>
+    <span class="status-value">
+      <div class="vol-wrap">
+        <span id="s-vol-num">—</span>
+        <div class="vol-bar-track"><div class="vol-bar-fill" id="s-vol-fill"></div></div>
+      </div>
+    </span>
+  </div>
+  <div class="status-row">
+    <span class="status-label">Muted</span>
+    <span class="status-value" id="s-muted">—</span>
+  </div>
+</div>
+
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -363,6 +488,38 @@ function sendInput(inputId) {
   })
   .catch(function() { showToast('No connection', true); });
 }
+
+function formatInput(raw) {
+  if (!raw) return '—';
+  return raw.replace(/^hdmi(\d+)$/i, 'HDMI $1').replace(/^component(\d+)$/i, 'Component $1');
+}
+
+function updateStatus() {
+  fetch('/api/tv/state')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var dot = document.getElementById('s-dot');
+      dot.className = 'status-dot ' + (d.status === 'online' ? 'online' : 'offline');
+      document.getElementById('s-status').textContent = d.status || '—';
+      document.getElementById('s-screen').textContent = d.screen_state || '—';
+      document.getElementById('s-input').textContent = formatInput(d.input);
+      var vol = d.volume != null ? d.volume : null;
+      document.getElementById('s-vol-num').textContent = vol != null ? vol : '—';
+      var fill = document.getElementById('s-vol-fill');
+      fill.style.width = vol != null ? Math.min(vol, 100) + '%' : '0%';
+      fill.className = 'vol-bar-fill' + (d.muted ? ' muted' : '');
+      var mutedEl = document.getElementById('s-muted');
+      mutedEl.textContent = d.muted ? 'Yes' : 'No';
+      mutedEl.style.color = d.muted ? '#cc9933' : '#c8c8d8';
+    })
+    .catch(function() {
+      document.getElementById('s-dot').className = 'status-dot offline';
+      document.getElementById('s-status').textContent = 'offline';
+    });
+}
+
+updateStatus();
+setInterval(updateStatus, 1000);
 </script>
 </body>
 </html>

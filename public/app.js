@@ -47,7 +47,7 @@ function buildSparkline(temps, precips) {
     if (!temps || temps.length < 2) return '';
     const W = 100, H = 36;
     const TEMP_TOP = 2, TEMP_BOT = 28;
-    const PREC_BOT = 34, PREC_MAX_H = 8;
+    const PREC_BOT = 34, PREC_MAX_H = 8, PREC_MIN_H = 1.5;
     const n      = temps.length;
     const xStep  = W / (n - 1);
     const tMin   = Math.min(...temps);
@@ -63,7 +63,7 @@ function buildSparkline(temps, precips) {
     let precipSvg = '';
     if (precips && precips.length === n) {
         const pts   = precips.map((p, i) =>
-            `${(i * xStep).toFixed(1)},${(PREC_BOT - (p / 100) * PREC_MAX_H).toFixed(1)}`
+            `${(i * xStep).toFixed(1)},${(PREC_BOT - Math.max((p / 100) * PREC_MAX_H, PREC_MIN_H)).toFixed(1)}`
         ).join(' ');
         const lastX = ((n - 1) * xStep).toFixed(1);
         precipSvg = `<polygon points="0,${PREC_BOT} ${pts} ${lastX},${PREC_BOT}" fill="rgba(79,195,247,0.3)"/>`;

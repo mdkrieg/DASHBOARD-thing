@@ -199,6 +199,10 @@
         "name": "Parse Forecast",
         "func": "const d = msg.payload.daily;\nconst h = msg.payload.hourly;\nif (!d) { node.warn('No daily data in forecast response'); return null; }\nconst days = d.time.map((date, i) => {\n    let hourlyData = null;\n    if (h && h.time) {\n        const prefix = date + 'T';\n        const start = h.time.findIndex(t => t.startsWith(prefix));\n        if (start >= 0) {\n            hourlyData = {\n                temperature: h.temperature_2m.slice(start, start + 24),\n                precip_prob: h.precipitation_probability.slice(start, start + 24)\n            };\n        }\n    }\n    return {\n        date,\n        temp_max: d.temperature_2m_max[i],\n        temp_min: d.temperature_2m_min[i],\n        precip_prob: d.precipitation_probability_max[i],\n        wind_max: d.wind_speed_10m_max[i],\n        pressure_mean: d.surface_pressure_mean[i],\n        hourly: hourlyData\n    };\n});\nflow.set('forecast', { days, updated: new Date().toLocaleTimeString() });\nreturn msg;",
         "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
         "x": 780,
         "y": 280,
         "wires": [
