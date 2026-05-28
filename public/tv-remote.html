@@ -24,7 +24,19 @@
     width: 280px;
     border: 1px solid #333340;
     box-shadow: 0 0 0 1px #111116, 0 40px 80px rgba(0,0,0,0.6);
+    position: relative;
   }
+
+  .remote-status-dot {
+    position: absolute;
+    top: 1.1rem;
+    left: 1.25rem;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: #555560;
+  }
+  .remote-status-dot.online  { background: #33aa55; box-shadow: 0 0 6px rgba(51,170,85,0.5); }
+  .remote-status-dot.offline { background: #cc3333; box-shadow: 0 0 6px rgba(204,51,51,0.5); }
 
   .brand {
     text-align: center;
@@ -290,6 +302,7 @@
 <div class="layout">
 
 <div class="remote">
+  <span class="remote-status-dot" id="r-dot"></span>
   <div class="brand">LG WebOS</div>
 
   <div class="section">
@@ -500,6 +513,7 @@ function updateStatus() {
     .then(function(d) {
       var dot = document.getElementById('s-dot');
       dot.className = 'status-dot ' + (d.status === 'online' ? 'online' : 'offline');
+      document.getElementById('r-dot').className = 'remote-status-dot ' + (d.status === 'online' ? 'online' : 'offline');
       document.getElementById('s-status').textContent = d.status || '—';
       document.getElementById('s-screen').textContent = d.screen_state || '—';
       document.getElementById('s-input').textContent = formatInput(d.input);
@@ -514,6 +528,7 @@ function updateStatus() {
     })
     .catch(function() {
       document.getElementById('s-dot').className = 'status-dot offline';
+      document.getElementById('r-dot').className = 'remote-status-dot offline';
       document.getElementById('s-status').textContent = 'offline';
     });
 }

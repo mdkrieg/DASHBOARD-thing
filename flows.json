@@ -1225,42 +1225,25 @@
         ]
     },
     {
-        "id": "635e5819747db901",
-        "type": "mqtt in",
-        "z": "c1c95c1cc6321b9c",
-        "name": "",
-        "topic": "govee/bedroom",
-        "qos": "2",
-        "datatype": "auto-detect",
-        "broker": "f089e726e77d1626",
-        "nl": false,
-        "rap": true,
-        "rh": 0,
-        "inputs": 0,
-        "x": 220,
-        "y": 80,
-        "wires": [
-            [
-                "b6f155557b33e19f"
-            ]
-        ]
-    },
-    {
         "id": "b6f155557b33e19f",
         "type": "function",
         "z": "c1c95c1cc6321b9c",
-        "name": "aggregate",
-        "func": "// Configuration\nconst WINDOW_MS = 60 * 1000; // 1 minute aggregation window\n\n// Fields to aggregate from the payload\nconst FIELDS = ['temperature', 'temperature_c', 'humidity', 'battery'];\n\n// --- Helpers ---\n\nfunction median(sorted) {\n    const mid = Math.floor(sorted.length / 2);\n    return sorted[mid]; // don't bother averaging tied middle, little variance expected so don't add figures\n}\n\nfunction computeStats(values) {\n    if (values.length === 0) return null;\n    const sorted = [...values].sort((a, b) => a - b);\n    return {\n        min: sorted[0],\n        max: sorted[sorted.length - 1],\n        median: median(sorted),\n        count: sorted.length,\n    };\n}\n\nfunction flushTopic(topic) {\n    let buffers = context.get('buffers') || {};\n    let windows = context.get('windows') || {};\n    let timeouts = context.get('timeouts') || {};\n\n    delete buffers[topic];\n    delete windows[topic];\n    delete timeouts[topic];\n\n    context.set('buffers', buffers);\n    context.set('windows', windows);\n    context.set('timeouts', timeouts);\n\n    // Optionally clear from flow context too so stale stats aren't read downstream\n    let flowStats = flow.get('sensorStats') || {};\n    delete flowStats[topic];\n    flow.set('sensorStats', flowStats);\n}\n\n// --- Main ---\n\nconst topic = msg.topic;\nif (!topic || typeof msg.payload !== 'object') return null;\n\nconst now = Date.now();\nconst nowISO = new Date(now).toISOString();\n\n// Per-topic buffers live in node context  { [topic]: { lastSeen, friendlyName, fields: { [field]: number[] } } }\nlet buffers = context.get('buffers') || {};\n\nif (!buffers[topic]) {\n    buffers[topic] = { lastSeen: nowISO, friendlyName: null, fields: {} };\n    FIELDS.forEach(f => { buffers[topic].fields[f] = []; });\n}\n\nconst buf = buffers[topic];\nbuf.lastSeen = nowISO;\n\n// Carry through the latest friendly_name seen for this topic\nif (msg.payload.friendly_name != null) {\n    buf.friendlyName = msg.payload.friendly_name;\n}\n\n// Accumulate numeric field values\nFIELDS.forEach(field => {\n    const val = msg.payload[field];\n    if (typeof val === 'number' && isFinite(val)) {\n        if (!buf.fields[field]) buf.fields[field] = [];\n        buf.fields[field].push(val);\n    }\n});\n\ncontext.set('buffers', buffers);\n\n// --- Flush if window has elapsed ---\n\nlet windows = context.get('windows') || {};\n\nif (!windows[topic]) {\n    windows[topic] = now;\n    context.set('windows', windows);\n    return null;\n}\n\nconst elapsed = now - windows[topic];\nif (elapsed < WINDOW_MS) return null;\n\n// --- Window elapsed: compute and publish stats ---\n\nconst stats = {\n    topic,\n    friendly_name: buf.friendlyName, // <-- carried through\n    timestamp: nowISO,\n    fields: {}\n};\nlet hasData = false;\n\nFIELDS.forEach(field => {\n    const samples = buf.fields[field] || [];\n    if (samples.length > 0) {\n        stats.fields[field] = computeStats(samples);\n        hasData = true;\n    }\n});\n\n// Reset buffer and window for this topic\nbuffers[topic].fields = {};\nFIELDS.forEach(f => { buffers[topic].fields[f] = []; });\nwindows[topic] = now;\n\ncontext.set('buffers', buffers);\ncontext.set('windows', windows);\n\nif (!hasData) return null;\n\n// --- Write to flow context ---\n\nlet flowStats = flow.get('sensorStats') || {};\nflowStats[topic] = stats;\nflow.set('sensorStats', flowStats);\n\n// Refresh the silence-detection timeout for this topic\nvar timeouts = context.get('timeouts') || {};\nif (timeouts[topic]) clearTimeout(timeouts[topic]);\ntimeouts[topic] = setTimeout(() => { flushTopic(topic); }, WINDOW_MS * 5);\ncontext.set('timeouts', timeouts);\n\nreturn { topic, payload: stats };",
-        "outputs": 1,
+        "name": "aggregate live data",
+        "func": "// Configuration\nconst WINDOW_MS = 60 * 1000; // 1 minute aggregation window\n\n// Fields to aggregate from the payload\n// const FIELDS = ['temperature', 'temperature_c', 'humidity', 'battery'];\nconst FIELDS = ['temperature', 'humidity', 'battery'];\n\n// --- Helpers ---\n\nfunction median(sorted) {\n    const mid = Math.floor(sorted.length / 2);\n    return sorted[mid]; // don't bother averaging tied middle, little variance expected so don't add figures\n}\n\nfunction computeStats(values) {\n    if (values.length === 0) return null;\n    const sorted = [...values].sort((a, b) => a - b);\n    return {\n        min: sorted[0],\n        max: sorted[sorted.length - 1],\n        median: median(sorted),\n        count: sorted.length,\n    };\n}\n\nfunction flushTopic(topic) {\n    let buffers = context.get('buffers') || {};\n    let windows = context.get('windows') || {};\n    let timeouts = context.get('timeouts') || {};\n\n    delete buffers[topic];\n    delete windows[topic];\n    delete timeouts[topic];\n\n    context.set('buffers', buffers);\n    context.set('windows', windows);\n    context.set('timeouts', timeouts);\n\n    // Optionally clear from flow context too so stale stats aren't read downstream\n    let flowStats = flow.get('sensorStats') || {};\n    delete flowStats[topic];\n    flow.set('sensorStats', flowStats);\n    node.send([null, {\"topic\":topic,\"payload\":\"Flushed Topic\"}])\n}\n\n// --- Main ---\n\nconst topic = msg.topic;\nif (!topic || typeof msg.payload !== 'object') return null;\n\nconst now = Date.now();\nconst nowISO = new Date(now).toISOString();\n\n// Per-topic buffers live in node context  { [topic]: { lastSeen, friendlyName, fields: { [field]: number[] } } }\nlet buffers = context.get('buffers') || {};\n\nif (!buffers[topic]) {\n    buffers[topic] = { lastSeen: nowISO, friendlyName: null, fields: {} };\n    FIELDS.forEach(f => { buffers[topic].fields[f] = []; });\n}\n\nconst buf = buffers[topic];\nbuf.lastSeen = nowISO;\n\n// Carry through the latest friendly_name seen for this topic\nif (msg.payload.friendly_name != null) {\n    buf.friendlyName = msg.payload.friendly_name;\n}\n\n// Accumulate numeric field values\nFIELDS.forEach(field => {\n    const val = msg.payload[field];\n    if (typeof val === 'number' && isFinite(val)) {\n        if (!buf.fields[field]) buf.fields[field] = [];\n        buf.fields[field].push(val);\n    }\n});\n\ncontext.set('buffers', buffers);\n\n// --- Flush if window has elapsed ---\n\nlet windows = context.get('windows') || {};\n\nif (!windows[topic]) {\n    windows[topic] = now;\n    context.set('windows', windows);\n    return null;\n}\n\nconst elapsed = now - windows[topic];\nif (elapsed < WINDOW_MS) return null;\n\n// --- Window elapsed: compute and publish stats ---\n\nconst stats = {\n    topic,\n    friendly_name: buf.friendlyName, // <-- carried through\n    timestamp: nowISO,\n    fields: {}\n};\nlet hasData = false;\n\nFIELDS.forEach(field => {\n    const samples = buf.fields[field] || [];\n    if (samples.length > 0) {\n        stats.fields[field] = computeStats(samples);\n        hasData = true;\n    }\n});\n\n// Reset buffer and window for this topic\nbuffers[topic].fields = {};\nFIELDS.forEach(f => { buffers[topic].fields[f] = []; });\nwindows[topic] = now;\n\ncontext.set('buffers', buffers);\ncontext.set('windows', windows);\n\nif (!hasData) return null;\n\n// --- Write to flow context ---\n\nlet flowStats = flow.get('sensorStats') || {};\nflowStats[topic] = stats;\nflow.set('sensorStats', flowStats);\n\n// Refresh the silence-detection timeout for this topic\nvar timeouts = context.get('timeouts') || {};\nif (timeouts[topic]) clearTimeout(timeouts[topic]);\ntimeouts[topic] = setTimeout(() => { flushTopic(topic); }, WINDOW_MS * 5);\ncontext.set('timeouts', timeouts);\n\nreturn { topic, payload: stats };",
+        "outputs": 2,
         "noerr": 0,
         "initialize": "",
         "finalize": "",
         "libs": [],
-        "x": 480,
+        "x": 430,
         "y": 220,
         "wires": [
             [
-                "ws-sensors-out"
+                "ws-sensors-out",
+                "5a82954818395473"
+            ],
+            [
+                "8cb2637b9406aada"
             ]
         ]
     },
@@ -1269,16 +1252,16 @@
         "type": "mqtt in",
         "z": "c1c95c1cc6321b9c",
         "name": "",
-        "topic": "govee/matt_office",
+        "topic": "govee/+",
         "qos": "2",
-        "datatype": "auto-detect",
+        "datatype": "json",
         "broker": "f089e726e77d1626",
         "nl": false,
         "rap": true,
         "rh": 0,
         "inputs": 0,
-        "x": 220,
-        "y": 140,
+        "x": 210,
+        "y": 220,
         "wires": [
             [
                 "b6f155557b33e19f"
@@ -1305,8 +1288,8 @@
         "method": "get",
         "upload": false,
         "swaggerDoc": "",
-        "x": 240,
-        "y": 320,
+        "x": 220,
+        "y": 360,
         "wires": [
             [
                 "372e6ab02ff1df74"
@@ -1332,8 +1315,8 @@
         "from": "",
         "to": "",
         "reg": false,
-        "x": 460,
-        "y": 320,
+        "x": 440,
+        "y": 360,
         "wires": [
             [
                 "1594c41009d95c20"
@@ -1347,8 +1330,144 @@
         "name": "",
         "statusCode": "",
         "headers": {},
-        "x": 650,
-        "y": 320,
+        "x": 630,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "22993070a8ec9510",
+        "type": "file",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "filename": "\"sensors/\" & topic",
+        "filenameType": "jsonata",
+        "appendNewline": true,
+        "createDir": true,
+        "overwriteFile": "false",
+        "encoding": "none",
+        "x": 660,
+        "y": 280,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5a82954818395473",
+        "type": "function",
+        "z": "c1c95c1cc6321b9c",
+        "name": "aggregate history",
+        "func": "// Configuration\nconst WINDOW_MS = 10 * 60 * 1000; // 10 minute aggregation window\nconst FIELDS = ['temperature', 'humidity'];\n\n// --- Helpers ---\n\nfunction median(sorted) {\n    const mid = Math.floor(sorted.length / 2);\n    return sorted.length % 2 !== 0\n        ? sorted[mid]\n        : (sorted[mid - 1] + sorted[mid]) / 2;\n}\n\nfunction formatCSVPayload(field, samples, timestamp) {\n    if (!samples || samples.medians.length === 0) {\n        return `null,null,null,${timestamp}`;\n    }\n    const med = median([...samples.medians].sort((a, b) => a - b));\n    const min = samples.min;\n    const max = samples.max;\n    return `${med},${min},${max},${timestamp}`;\n}\n\nfunction flushTopic(topic) {\n    let buffers = context.get('buffers') || {};\n    let windows = context.get('windows') || {};\n    let timeouts = context.get('timeouts') || {};\n\n    delete buffers[topic];\n    delete windows[topic];\n    delete timeouts[topic];\n\n    context.set('buffers', buffers);\n    context.set('windows', windows);\n    context.set('timeouts', timeouts);\n}\n\n// --- Main ---\n\nconst topic = msg.topic;\nconst data = msg.payload;\nif (!topic || typeof data !== 'object') return null;\n\nconst now = Date.now();\nconst nowISO = new Date(now).toISOString();\n\n// Buffer shape: { [topic]: { friendlyName, fields: { [field]: { medians: [], min, max } } } }\nlet buffers = context.get('buffers') || {};\nlet windows = context.get('windows') || {};\n\nif (!buffers[topic]) {\n    buffers[topic] = { friendlyName: null, fields: {} };\n    FIELDS.forEach(f => {\n        buffers[topic].fields[f] = { medians: [], min: Infinity, max: -Infinity };\n    });\n}\n\nconst buf = buffers[topic];\n\nif (data.friendly_name != null) buf.friendlyName = data.friendly_name;\n\n// Accumulate per-field stats from the incoming 1-minute summary\nFIELDS.forEach(field => {\n    const incoming = data.fields?.[field];\n    if (!incoming) return;\n    if (!buf.fields[field]) {\n        buf.fields[field] = { medians: [], min: Infinity, max: -Infinity };\n    }\n    const f = buf.fields[field];\n    if (typeof incoming.median === 'number') f.medians.push(incoming.median);\n    if (typeof incoming.min === 'number') f.min = Math.min(f.min, incoming.min);\n    if (typeof incoming.max === 'number') f.max = Math.max(f.max, incoming.max);\n});\n\n// Start window on first message for this topic\nif (!windows[topic]) {\n    windows[topic] = now;\n    context.set('buffers', buffers);\n    context.set('windows', windows);\n    return null;\n}\n\ncontext.set('buffers', buffers);\n\nconst elapsed = now - windows[topic];\nif (elapsed < WINDOW_MS) return null;\n\n// --- Window elapsed: emit one message per field ---\n\nconst outMsgs = [];\n\nFIELDS.forEach(field => {\n    const samples = buf.fields[field];\n    const hasData = samples && samples.medians.length > 0;\n    const payload = formatCSVPayload(field, hasData ? samples : null, nowISO);\n\n    outMsgs.push({\n        topic: `${topic}/${field}`,\n        friendly_name: buf.friendlyName,\n        payload\n    });\n});\n\n// Reset window and buffer\nbuffers[topic] = { friendlyName: buf.friendlyName, fields: {} };\nFIELDS.forEach(f => {\n    buffers[topic].fields[f] = { medians: [], min: Infinity, max: -Infinity };\n});\nwindows[topic] = now;\ncontext.set('buffers', buffers);\ncontext.set('windows', windows);\n\n// Refresh silence-detection timeout — flush and emit nulls if dark for a full window\nlet timeouts = context.get('timeouts') || {};\nif (timeouts[topic]) clearTimeout(timeouts[topic]);\ntimeouts[topic] = setTimeout(() => {\n    const ts = new Date().toISOString();\n    FIELDS.forEach(field => {\n        node.send({\n            topic: `${topic}/${field}`,\n            friendly_name: buf.friendlyName,\n            payload: `null,null,null,${ts}`\n        });\n    });\n    flushTopic(topic);\n}, WINDOW_MS);\ncontext.set('timeouts', timeouts);\n\nreturn [outMsgs.map(m => m)];",
+        "outputs": 1,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 430,
+        "y": 280,
+        "wires": [
+            [
+                "22993070a8ec9510"
+            ]
+        ]
+    },
+    {
+        "id": "3f040a492ef1a8c8",
+        "type": "http in",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "url": "/api/sensor/*",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 210,
+        "y": 460,
+        "wires": [
+            [
+                "3b672f486ae3b108",
+                "1d0f5c64b41e4f2f"
+            ]
+        ]
+    },
+    {
+        "id": "3b672f486ae3b108",
+        "type": "file in",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "filename": "\"sensors/\" & req.params.\"0\"",
+        "filenameType": "jsonata",
+        "format": "utf8",
+        "chunk": false,
+        "sendError": false,
+        "encoding": "none",
+        "allProps": false,
+        "x": 430,
+        "y": 460,
+        "wires": [
+            [
+                "26ea0b4c9f243899",
+                "31a4b91a1f7f644d"
+            ]
+        ]
+    },
+    {
+        "id": "26ea0b4c9f243899",
+        "type": "http response",
+        "z": "c1c95c1cc6321b9c",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 620,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "1d0f5c64b41e4f2f",
+        "type": "debug",
+        "z": "c1c95c1cc6321b9c",
+        "name": "debug 9",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 390,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "31a4b91a1f7f644d",
+        "type": "debug",
+        "z": "c1c95c1cc6321b9c",
+        "name": "debug 10",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "true",
+        "targetType": "full",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 560,
+        "y": 520,
+        "wires": []
+    },
+    {
+        "id": "8cb2637b9406aada",
+        "type": "debug",
+        "z": "c1c95c1cc6321b9c",
+        "name": "debug 11",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 730,
+        "y": 140,
         "wires": []
     }
 ]
