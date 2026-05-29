@@ -242,7 +242,7 @@ html, body {
     background: var(--surface-2);
     border: 1px solid var(--border);
     border-radius: 8px;
-    padding: 12px 18px;
+    padding: 8px 10px;
     min-width: 150px;
     transition: opacity 0.5s;
 }
@@ -267,6 +267,30 @@ html, body {
     min-width: 0;
     min-height: 80px;
     position: relative;
+    overflow: hidden;
+}
+
+.trend-xlabel {
+    position: absolute;
+    bottom: 2px;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    color: var(--text-2);
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.trend-ylabel {
+    position: absolute;
+    left: 4px;
+    transform: translateY(-50%);
+    font-size: 0.6rem;
+    color: var(--text-2);
+    white-space: nowrap;
+    pointer-events: none;
+    background: rgba(15, 15, 15, 0.75);
+    padding: 0 2px;
+    border-radius: 2px;
 }
 
 .sensor-trend-wrap svg {
@@ -276,39 +300,43 @@ html, body {
 }
 
 .sensor-name {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.12em;
     color: var(--text-2);
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 4px;
 }
 
-.sensor-stats {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 3px 10px;
+.sensor-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.sensor-stats dt {
-    font-size: 0.65rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-2);
-    text-align: right;
-    -webkit-align-self: center;
-    align-self: center;
-}
-
-.sensor-stats dd {
-    font-size: 1.1rem;
+.sensor-val {
+    font-size: 1rem;
     font-weight: 300;
     color: var(--text-1);
+    white-space: nowrap;
 }
 
-.sensor-stats dd small {
-    font-size: 0.7rem;
+.sensor-range {
+    font-size: 0.65rem;
     color: var(--text-2);
+}
+
+.range-uncertain {
+    color: #ffeb3b;
+}
+
+.batt-icon {
+    width: 24px;
+    height: 12px;
+    display: inline-block;
+    vertical-align: middle;
+    flex-shrink: 0;
+    margin-left: auto;
 }
 
 .forecast-grid {
@@ -415,4 +443,26 @@ html, body {
     height: 36px;
     display: block;
     overflow: visible;
+}
+
+.fc-pressure-sparkline {
+    width: 100%;
+    height: 20px;
+    display: block;
+    overflow: visible;
+}
+
+.fc-precip-sparkline {
+    width: 100%;
+    height: 20px;
+    display: block;
+    overflow: visible;
+}
+
+.fc-sparkline-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-2);
+    text-align: center;
 }

@@ -43,33 +43,67 @@ function updateClock() {
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
-function buildSparkline(temps, precips) {
+function buildSparkline(temps, tGlobalMin, tGlobalMax) {
     if (!temps || temps.length < 2) return '';
     const W = 100, H = 36;
-    const TEMP_TOP = 2, TEMP_BOT = 28;
-    const PREC_BOT = 34, PREC_MAX_H = 8, PREC_MIN_H = 1.5;
+    const TOP = 2, BOT = 34;
     const n      = temps.length;
     const xStep  = W / (n - 1);
-    const tMin   = Math.min(...temps);
-    const tMax   = Math.max(...temps);
+    const tMin   = (tGlobalMin != null) ? tGlobalMin : Math.min(...temps);
+    const tMax   = (tGlobalMax != null) ? tGlobalMax : Math.max(...temps);
     const tRange = tMax - tMin || 1;
 
     const tempPts = temps.map((t, i) => {
         const x = (i * xStep).toFixed(1);
-        const y = (TEMP_TOP + (TEMP_BOT - TEMP_TOP) * (1 - (t - tMin) / tRange)).toFixed(1);
+        const y = (TOP + (BOT - TOP) * (1 - (t - tMin) / tRange)).toFixed(1);
         return `${x},${y}`;
     }).join(' ');
 
-    let precipSvg = '';
-    if (precips && precips.length === n) {
-        const pts   = precips.map((p, i) =>
-            `${(i * xStep).toFixed(1)},${(PREC_BOT - Math.max((p / 100) * PREC_MAX_H, PREC_MIN_H)).toFixed(1)}`
-        ).join(' ');
-        const lastX = ((n - 1) * xStep).toFixed(1);
-        precipSvg = `<polygon points="0,${PREC_BOT} ${pts} ${lastX},${PREC_BOT}" fill="rgba(79,195,247,0.3)"/>`;
-    }
+    return `<p class='fc-sparkline-label'>TEMPERATURE</p><svg class="fc-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${tempPts}" fill="none" stroke="#ffb74d" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+}
 
-    return `<svg class="fc-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${precipSvg}<polyline points="${tempPts}" fill="none" stroke="#ffb74d" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+function buildPrecipSparkline(precips) {
+    if (!precips || precips.length < 1) return '';
+    const W = 100, H = 20;
+    const TOP = 2;
+    const n     = precips.length;
+    const xStep = W / n;
+    const gap   = 0.5;
+
+    const bars = precips.map((p, i) => {
+        const barH = ((p / 99)+ 0.01) * (H - TOP); // ensure even 0% shows a tiny bar, and 100% doesn't exceed the viewBox
+        // if (barH < 0.5) return '';
+        const x = (i * xStep).toFixed(1);
+        const y = (H - barH).toFixed(1);
+        const w = Math.max(xStep - gap, 0.5).toFixed(1);
+        let outHTML = `<line x1="${x}" y1="${y}" x2="${(parseFloat(x) + parseFloat(w)).toFixed(1)}" y2="${y}" stroke="rgba(79,195,247,0.9)" stroke-width="0.75"/>`;
+        if (barH >= 0.75) {
+            outHTML += `<rect x="${x}" y="${y}" width="${w}" height="${barH.toFixed(1)}" fill="rgba(79,195,247,0.6)"/>`;
+        }
+        return outHTML;
+    }).join('');
+
+    return `<p class='fc-sparkline-label'>PRECIPITATION</p><svg class="fc-precip-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+}
+
+function buildPressureSparkline(pressures, pGlobalMin, pGlobalMax) {
+    if (!pressures || pressures.length < 2) return '';
+    const W = 100, H = 20;
+    const TOP = 2, BOT = 18;
+    const n      = pressures.length;
+    const xStep  = W / (n - 1);
+    const pMin   = (pGlobalMin != null) ? pGlobalMin : Math.min(...pressures);
+    const pMax   = (pGlobalMax != null) ? pGlobalMax : Math.max(...pressures);
+    const pRange = pMax - pMin || 1;
+    const localMin = Math.min(...pressures);
+    const localMax = Math.max(...pressures);
+    const pts = pressures.map((p, i) => {
+        const x = (i * xStep).toFixed(1);
+        const y = (TOP + (BOT - TOP) * (1 - (p - pMin) / pRange)).toFixed(1);
+        return `${x},${y}`;
+    }).join(' ');
+    // NOTE: I know the ± range in the is a range and not a deviation from a mean, but intuitively I will know this conveys a range not a variance.
+    return `<p class='fc-sparkline-label'>PRESSURE (±${Math.round((localMax - localMin))} hPa)</p><svg class="fc-pressure-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#ce93d8" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
 }
 
 // ── Render helpers ───────────────────────────────────────────────────────────
@@ -94,9 +128,16 @@ function renderCurrent(weather, aqi) {
     }
 }
 
-function renderForecast(forecast) {
+function renderForecast(forecast, yesterdayPressure) {
     if (!forecast || !forecast.days) return;
     const today = new Date(Date.now() + timeOffset).toISOString().slice(0, 10);
+
+    const allTemps     = forecast.days.flatMap(d => (d.hourly && d.hourly.temperature) || []).filter(v => v != null);
+    const allPressures = forecast.days.flatMap(d => (d.hourly && d.hourly.pressure)    || []).filter(v => v != null);
+    const tGlobalMin   = allTemps.length     ? Math.min(...allTemps)     : null;
+    const tGlobalMax   = allTemps.length     ? Math.max(...allTemps)     : null;
+    const pGlobalMin   = allPressures.length ? Math.min(...allPressures) : null;
+    const pGlobalMax   = allPressures.length ? Math.max(...allPressures) : null;
 
     $('forecast-cards').innerHTML = forecast.days.map((day, i) => {
         const d       = new Date(day.date + 'T12:00:00');
@@ -107,15 +148,24 @@ function renderForecast(forecast) {
         const wind   = day.wind_max   != null ? `${Math.round(day.wind_max)} mph` : '--';
 
         let pressureHtml;
-        if (i === 0 || day.pressure_mean == null) {
-            pressureHtml = day.pressure_mean != null ? `${Math.round(day.pressure_mean)} hPa` : '--';
+        if (i === 0) {
+            if (yesterdayPressure != null && day.pressure_mean != null) {
+                const delta = Math.round(day.pressure_mean) - Math.round(yesterdayPressure);
+                if (delta === 0)     pressureHtml = `<span class="fc-pressure-flat">+0 hPa</span>`;
+                else if (delta > 0)  pressureHtml = `<span class="fc-pressure-up">+${delta} hPa</span>`;
+                else                 pressureHtml = `<span class="fc-pressure-down">${delta} hPa</span>`;
+            } else {
+                pressureHtml = day.pressure_mean != null ? `${Math.round(day.pressure_mean)} hPa` : '--';
+            }
+        } else if (day.pressure_mean == null) {
+            pressureHtml = '--';
         } else {
             const prev  = forecast.days[i - 1].pressure_mean;
             const delta = prev != null ? Math.round(day.pressure_mean) - Math.round(prev) : null;
             if (delta == null) {
                 pressureHtml = '--';
             } else if (delta === 0) {
-                pressureHtml = `<span class="fc-pressure-flat">0 hPa</span>`;
+                pressureHtml = `<span class="fc-pressure-flat">+0 hPa</span>`;
             } else if (delta > 0) {
                 pressureHtml = `<span class="fc-pressure-up">+${delta} hPa</span>`;
             } else {
@@ -123,9 +173,16 @@ function renderForecast(forecast) {
             }
         }
 
-        const sparkline = buildSparkline(
+        const tempSparkline = buildSparkline(
             day.hourly && day.hourly.temperature,
+            tGlobalMin, tGlobalMax
+        );
+        const precipSparkline = buildPrecipSparkline(
             day.hourly && day.hourly.precip_prob
+        );
+        const pressureSparkline = buildPressureSparkline(
+            day.hourly && day.hourly.pressure,
+            pGlobalMin, pGlobalMax
         );
         return `<div class="fc-card${isToday ? ' fc-card--today' : ''}">
             <div class="fc-day">${dayName}</div>
@@ -138,7 +195,9 @@ function renderForecast(forecast) {
                 <dt>Wind</dt><dd>${wind}</dd>
                 <dt>Pressure</dt><dd>${pressureHtml}</dd>
             </dl>
-            ${sparkline}
+            ${tempSparkline}
+            ${precipSparkline}
+            ${pressureSparkline}
         </div>`;
     }).join('');
 }
@@ -154,7 +213,7 @@ async function poll() {
             timeOffset = new Date(data.serverTime).getTime() - Date.now();
         }
         renderCurrent(data.weather, data.aqi);
-        renderForecast(data.forecast);
+        renderForecast(data.forecast, data.weather && data.weather.yesterday_pressure);
         $('last-updated').textContent = `Updated ${new Date().toLocaleTimeString()}`;
     } catch (e) {
         console.error('Weather fetch failed:', e);
@@ -179,6 +238,25 @@ function sortSensorCards() {
         .forEach(card => container.appendChild(card));
 }
 
+function valueHtml(median, rawRange) {
+    var fixed = median.toFixed(1);
+    if (rawRange >= 0.5) {
+        return fixed.slice(0, -1) + '<span class="range-uncertain">?</span>';
+    }
+    return fixed;
+}
+
+function batteryIcon(pct) {
+    var p   = Math.max(0, Math.min(100, pct));
+    var fw  = (14 * p / 100).toFixed(1);
+    var col = p >= 30 ? '#1a5e1c' : p >= 15 ? '#d29c4b' : '#c23b31';
+    return '<svg class="batt-icon" viewBox="0 0 22 9" xmlns="http://www.w3.org/2000/svg">' +
+        '<rect x="0.5" y="0.5" width="16" height="8" rx="2" ry="2" fill="none" stroke="#555" stroke-width="1"/>' +
+        '<rect x="16" y="2.5" width="2.5" height="4" rx="1" fill="#555"/>' +
+        '<rect x="1.5" y="1.5" width="' + fw + '" height="6" rx="1" fill="' + col + '"/>' +
+        '</svg>';
+}
+
 function handleSensorMessage(data) {
     if (!data.topic || !data.fields) return;
     const cardId = 'sc-' + data.topic.replace(/[^a-zA-Z0-9]/g, '-');
@@ -194,20 +272,20 @@ function handleSensorMessage(data) {
     }
     sensorLastSeen[cardId] = Date.now();
     card.classList.remove('sensor-card--stale');
-    const f  = data.fields;
-    const t  = f.temperature;
-    const h  = f.humidity;
-    const b  = f.battery;
-    const tr = (t.max - t.min).toFixed(1);
-    const hr = (h.max - h.min).toFixed(1);
-    const color = sensorColors[data.topic];
+    const f         = data.fields;
+    const t         = f.temperature;
+    const h         = f.humidity;
+    const b         = f.battery;
+    const tRangeRaw = t.max - t.min;
+    const hRangeRaw = h.max - h.min;
+    const color     = sensorColors[data.topic];
     card.innerHTML =
         `<div class="sensor-name"><span class="sensor-color-dot" style="background:${color}"></span>${data.friendly_name}</div>` +
-        `<dl class="sensor-stats">` +
-        `<dt>Temp</dt><dd>${t.median.toFixed(1)}° <small>±${tr}</small></dd>` +
-        `<dt>Humid</dt><dd>${h.median.toFixed(1)}% <small>±${hr}</small></dd>` +
-        `<dt>Battery</dt><dd>${b.median}%</dd>` +
-        `</dl>`;
+        `<div class="sensor-row">` +
+        `<span class="sensor-val">${valueHtml(t.median, tRangeRaw)}°</span>` +
+        `<span class="sensor-val">${valueHtml(h.median, hRangeRaw)}%</span>` +
+        batteryIcon(b.median) +
+        `</div>`;
     if (isNew) sortSensorCards();
 }
 
@@ -351,7 +429,32 @@ function renderSensorTrendChart() {
     });
 
     parts.push('</svg>');
-    wrap.innerHTML = parts.join('');
+
+    // Time labels (X-axis) — every 6 h, pinned to bottom of wrap
+    var timeLabelHtml = '';
+    for (var hh = 6; hh <= 42; hh += 6) {
+        var ts   = now - hh * 3600000;
+        var d    = new Date(ts);
+        var hr   = d.getHours();
+        var ampm = hr >= 12 ? 'pm' : 'am';
+        hr = hr % 12 || 12;
+        var xPct = (sx(ts) / W * 100).toFixed(1);
+        timeLabelHtml += '<span class="trend-xlabel" style="left:' + xPct + '%">' + hr + ampm + '</span>';
+    }
+
+    // Y-axis labels — min, mid, max in °F
+    var yMid = (yMin + yMax) / 2;
+    var yAxisPts = [
+        { temp: yMax, y: sy(yMax) },
+        { temp: yMid, y: sy(yMid) },
+        { temp: yMin, y: sy(yMin) },
+    ];
+    var yLabelHtml = yAxisPts.map(function (item) {
+        var yPct = (item.y / H * 100).toFixed(1);
+        return '<span class="trend-ylabel" style="top:' + yPct + '%">' + Math.round(item.temp) + '°F</span>';
+    }).join('');
+
+    wrap.innerHTML = parts.join('') + timeLabelHtml + yLabelHtml;
 }
 
 function checkSensorStaleness() {
