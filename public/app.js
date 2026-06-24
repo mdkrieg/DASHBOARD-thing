@@ -43,7 +43,7 @@ function updateClock() {
 
 // ── Sparkline ─────────────────────────────────────────────────────────────────
 
-function buildSparkline(temps, tGlobalMin, tGlobalMax) {
+function buildSparkline(temps, tGlobalMin, tGlobalMax, nowHour) {
     if (!temps || temps.length < 2) return '';
     const W = 100, H = 36;
     const TOP = 2, BOT = 34;
@@ -59,10 +59,16 @@ function buildSparkline(temps, tGlobalMin, tGlobalMax) {
         return `${x},${y}`;
     }).join(' ');
 
-    return `<p class='fc-sparkline-label'>TEMPERATURE</p><svg class="fc-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${tempPts}" fill="none" stroke="#ffb74d" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+    let nowLine = '';
+    if (nowHour != null && nowHour >= 0 && nowHour <= n - 1) {
+        const nx = (nowHour / (n - 1) * W).toFixed(1);
+        nowLine = `<line x1="${nx}" y1="${TOP}" x2="${nx}" y2="${BOT}" stroke="rgba(255,255,255,0.6)" stroke-width="0.75" stroke-dasharray="2,1.5"/>`;
+    }
+
+    return `<p class='fc-sparkline-label'>TEMPERATURE</p><svg class="fc-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${tempPts}" fill="none" stroke="#ffb74d" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>${nowLine}</svg>`;
 }
 
-function buildPrecipSparkline(precips) {
+function buildPrecipSparkline(precips, nowHour) {
     if (!precips || precips.length < 1) return '';
     const W = 100, H = 20;
     const TOP = 2;
@@ -83,10 +89,16 @@ function buildPrecipSparkline(precips) {
         return outHTML;
     }).join('');
 
-    return `<p class='fc-sparkline-label'>PRECIPITATION</p><svg class="fc-precip-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+    let nowLine = '';
+    if (nowHour != null && nowHour >= 0 && nowHour <= n) {
+        const nx = (nowHour / n * W).toFixed(1);
+        nowLine = `<line x1="${nx}" y1="${TOP}" x2="${nx}" y2="${H}" stroke="rgba(255,255,255,0.6)" stroke-width="0.75" stroke-dasharray="2,1.5"/>`;
+    }
+
+    return `<p class='fc-sparkline-label'>PRECIPITATION</p><svg class="fc-precip-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}${nowLine}</svg>`;
 }
 
-function buildPressureSparkline(pressures, pGlobalMin, pGlobalMax) {
+function buildPressureSparkline(pressures, pGlobalMin, pGlobalMax, nowHour) {
     if (!pressures || pressures.length < 2) return '';
     const W = 100, H = 20;
     const TOP = 2, BOT = 18;
@@ -102,8 +114,15 @@ function buildPressureSparkline(pressures, pGlobalMin, pGlobalMax) {
         const y = (TOP + (BOT - TOP) * (1 - (p - pMin) / pRange)).toFixed(1);
         return `${x},${y}`;
     }).join(' ');
+
+    let nowLine = '';
+    if (nowHour != null && nowHour >= 0 && nowHour <= n - 1) {
+        const nx = (nowHour / (n - 1) * W).toFixed(1);
+        nowLine = `<line x1="${nx}" y1="${TOP}" x2="${nx}" y2="${BOT}" stroke="rgba(255,255,255,0.6)" stroke-width="0.75" stroke-dasharray="2,1.5"/>`;
+    }
+
     // NOTE: I know the ± range in the is a range and not a deviation from a mean, but intuitively I will know this conveys a range not a variance.
-    return `<p class='fc-sparkline-label'>PRESSURE (±${Math.round((localMax - localMin))} hPa)</p><svg class="fc-pressure-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#ce93d8" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
+    return `<p class='fc-sparkline-label'>PRESSURE (±${Math.round((localMax - localMin))} hPa)</p><svg class="fc-pressure-sparkline" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="#ce93d8" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>${nowLine}</svg>`;
 }
 
 // ── Render helpers ───────────────────────────────────────────────────────────
@@ -132,17 +151,20 @@ function renderForecast(forecast, yesterdayPressure) {
     if (!forecast || !forecast.days) return;
     const today = new Date(Date.now() + timeOffset).toISOString().slice(0, 10);
 
-    const allTemps     = forecast.days.flatMap(d => (d.hourly && d.hourly.temperature) || []).filter(v => v != null);
-    const allPressures = forecast.days.flatMap(d => (d.hourly && d.hourly.pressure)    || []).filter(v => v != null);
+    const allTemps     = forecast.days.reduce((a, d) => a.concat((d.hourly && d.hourly.temperature) || []), []).filter(v => v != null);
+    const allPressures = forecast.days.reduce((a, d) => a.concat((d.hourly && d.hourly.pressure)    || []), []).filter(v => v != null);
     const tGlobalMin   = allTemps.length     ? Math.min(...allTemps)     : null;
     const tGlobalMax   = allTemps.length     ? Math.max(...allTemps)     : null;
     const pGlobalMin   = allPressures.length ? Math.min(...allPressures) : null;
     const pGlobalMax   = allPressures.length ? Math.max(...allPressures) : null;
+    const nowDate      = new Date(Date.now() + timeOffset);
+    const nowHour      = nowDate.getHours() + nowDate.getMinutes() / 60;
 
     $('forecast-cards').innerHTML = forecast.days.map((day, i) => {
-        const d       = new Date(day.date + 'T12:00:00');
-        const dayName = i === 0 ? 'Today' : DAY_NAMES[d.getDay()];
-        const isToday = day.date === today;
+        const d          = new Date(day.date + 'T12:00:00');
+        const dayName    = i === 0 ? 'Today' : DAY_NAMES[d.getDay()];
+        const isToday    = day.date === today;
+        const dayNowHour = isToday ? nowHour : null;
 
         const precip = day.precip_prob != null ? `${day.precip_prob}%` : '--';
         const wind   = day.wind_max   != null ? `${Math.round(day.wind_max)} mph` : '--';
@@ -175,14 +197,14 @@ function renderForecast(forecast, yesterdayPressure) {
 
         const tempSparkline = buildSparkline(
             day.hourly && day.hourly.temperature,
-            tGlobalMin, tGlobalMax
+            tGlobalMin, tGlobalMax, dayNowHour
         );
         const precipSparkline = buildPrecipSparkline(
-            day.hourly && day.hourly.precip_prob
+            day.hourly && day.hourly.precip_prob, dayNowHour
         );
         const pressureSparkline = buildPressureSparkline(
             day.hourly && day.hourly.pressure,
-            pGlobalMin, pGlobalMax
+            pGlobalMin, pGlobalMax, dayNowHour
         );
         return `<div class="fc-card${isToday ? ' fc-card--today' : ''}">
             <div class="fc-day">${dayName}</div>
@@ -394,7 +416,9 @@ function renderSensorTrendChart() {
                 const pts = seg.map(function (r) {
                     return sx(r.ts).toFixed(1) + ',' + sy(r.median).toFixed(1);
                 }).join(' ');
-                parts.push('<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>');
+                var d = 'M ' + pts.split(' ').join(' L ');
+                // parts.push('<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>');
+                parts.push('<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="1.5"/>');
             }
             if (dueToBreak && seg.length >= 1) {
                 const last = seg[seg.length - 1];

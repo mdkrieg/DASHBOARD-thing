@@ -262,6 +262,7 @@ html, body {
 }
 
 .sensor-trend-wrap {
+    height: 120px;   /* match the SVG viewBox height */
     -webkit-flex: 1;
     flex: 1;
     min-width: 0;
@@ -311,7 +312,10 @@ html, body {
 .sensor-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+}
+
+.sensor-row > * + * {
+    margin-left: 8px;
 }
 
 .sensor-val {
@@ -465,4 +469,18 @@ html, body {
     letter-spacing: 0.06em;
     color: var(--text-2);
     text-align: center;
+    margin-top: 10px;
 }
+
+#sensor-trend-wrap {
+  display: block;
+  width: 100%;
+  height: 120px; /* match your viewBox height */
+}
+
+#sensor-trend-wrap svg {
+  display: block;
+  width: 100%;
+  height: 120px;
+}
+
